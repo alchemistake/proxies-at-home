@@ -309,7 +309,8 @@ export function ArtworkModal() {
     [displayData.prints, cachedCardPrints]
   );
 
-  const isDFC = faceNames.length > 1;
+  const isDFC = faceNames.length > 1 ||
+    (initialFace === 'back' && !!linkedBackCard && !isCardbackId(linkedBackCard.imageId ?? ''));
 
   const dfcFrontFaceName = faceNames[0] || null;
   const dfcBackFaceName = faceNames[1] || null;
