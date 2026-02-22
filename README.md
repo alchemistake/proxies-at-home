@@ -22,12 +22,7 @@ The web app is hosted at **https://proxxied.com**
 ### Visual Editing
 - **Brightness, Contrast, Saturation** — Basic image adjustments
 - **Darkening Modes** — None, darken all, contrast edges, or contrast full with threshold and edge width control
-- **Color Effects** — Hue shift, sepia, color tint, RGB/CMYK channel balance, shadow/midtone/highlight control
 - **Enhancements** — Sharpness, pop/punch effect, noise reduction, gamma correction
-- **Holographic Effects** — Rainbow, glitter, or stars with adjustable strength, area mode, and animation
-- **Vignette** — Border darkening with size and feather control
-- **Color Replace** — Swap one color for another with threshold control
-- **CMYK Preview** — Simulate print colors before export
 - **Per-Card Bleed Override** — Fine-tune bleed and offset per card, per face
 - **WebGL Rendering** — GPU-accelerated via PixiJS for smooth real-time preview
 
