@@ -71,7 +71,7 @@ void main() {
         }
 
         // If opaque enough AND it is not part of the physical exterior corner, output the seed
-        if (color.a > 0.01 && isInside) { // Threshold for "seed"
+        if (color.a == 1.0 && isInside) { // Threshold for "seed"
             outColor = vec4(pixelCoord.x, pixelCoord.y, 0.0, 1.0);
             return;
         }
