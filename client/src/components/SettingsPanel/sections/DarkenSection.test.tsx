@@ -1,14 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { DarkenSection } from './DarkenSection';
+import { DarkenMode } from '../../../../../shared/types';
 
 // Mock values
 const mockState = vi.hoisted(() => ({
-    darkenMode: 'none' as 'none' | 'darken-all' | 'contrast-edges' | 'contrast-full',
+    darkenMode: 'none',
     darkenAmount: 1.0,
     darkenEdgeWidth: 0.15,
     darkenContrast: 2.0,
     darkenBrightness: -50,
     darkenAutoDetect: true,
+    setSetting: vi.fn(),
 }));
 
 const mockSetters = vi.hoisted(() => ({
@@ -35,6 +38,7 @@ vi.mock('@/store/settings', () => ({
             setDarkenBrightness: mockSetters.setDarkenBrightness,
             darkenAutoDetect: mockState.darkenAutoDetect,
             setDarkenAutoDetect: mockSetters.setDarkenAutoDetect,
+            setSetting: mockState.setSetting,
         };
         return selector(state);
     }),
@@ -80,12 +84,10 @@ vi.mock('@/components/CardCanvas', () => ({
     },
 }));
 
-import { DarkenSection } from './DarkenSection';
-
 describe('DarkenSection', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mockState.darkenMode = 'none';
+        mockState.darkenMode = DarkenMode.None;
         mockState.darkenAmount = 1.0;
         mockState.darkenAutoDetect = true;
     });
@@ -117,7 +119,7 @@ describe('DarkenSection', () => {
 
     describe('darken-all mode', () => {
         beforeEach(() => {
-            mockState.darkenMode = 'darken-all';
+            mockState.darkenMode = DarkenMode.DarkenAll as DarkenMode;
             mockState.darkenAutoDetect = false;
         });
 
@@ -145,7 +147,7 @@ describe('DarkenSection', () => {
 
     describe('contrast-edges mode', () => {
         beforeEach(() => {
-            mockState.darkenMode = 'contrast-edges';
+            mockState.darkenMode = DarkenMode.ContrastEdges;
             mockState.darkenAutoDetect = false;
         });
 
@@ -181,7 +183,7 @@ describe('DarkenSection', () => {
 
     describe('contrast-full mode', () => {
         beforeEach(() => {
-            mockState.darkenMode = 'contrast-full';
+            mockState.darkenMode = DarkenMode.ContrastFull;
             mockState.darkenAutoDetect = false;
         });
 
@@ -208,7 +210,7 @@ describe('DarkenSection', () => {
 
     describe('none mode', () => {
         it('should NOT show any sliders', () => {
-            mockState.darkenMode = 'none';
+            mockState.darkenMode = DarkenMode.None;
             render(<DarkenSection />);
             expect(screen.queryByTestId('slider-amount')).toBeNull();
             expect(screen.queryByTestId('slider-edge-width')).toBeNull();

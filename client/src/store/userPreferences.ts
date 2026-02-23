@@ -8,6 +8,7 @@ interface UserPreferencesState {
 
     load: () => Promise<void>;
     saveCurrentAsDefaults: () => Promise<void>;
+    resetToBuiltIn: () => Promise<void>;
     toggleFavoriteMpcSource: (source: string) => Promise<void>;
     toggleFavoriteMpcTag: (tag: string) => Promise<void>;
     setFavoriteMpcDpi: (dpi: number | null) => Promise<void>;

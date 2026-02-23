@@ -16,13 +16,17 @@ import {
     applyAdjustmentFilter,
     type CardOverrides
 } from './cardFilterUtils';
-import type { RenderParams } from '../CardCanvas/types';
 import { hasActiveAdjustments } from '@/helpers/adjustmentUtils';
 import { CONSTANTS } from "@/constants/commonConstants";
+import type { ImageSource } from '@/db';
+import type { RenderParams } from '../CardCanvas/types';
+import { getEffectiveGlobalDarkenMode } from '@/helpers/imageSourceUtils';
 
 interface PixiCardPreviewProps {
     /** Image blob to render */
     imageBlob: Blob | null;
+    /** Origin source of the image */
+    imageSource?: ImageSource | null;
     /** Render parameters */
     params: RenderParams;
     /** Pre-computed darkness factor */
@@ -39,6 +43,7 @@ interface PixiCardPreviewProps {
 
 function PixiCardPreviewInner({
     imageBlob,
+    imageSource,
     params,
     darknessFactor,
     width,
@@ -255,8 +260,16 @@ function PixiCardPreviewInner({
         // Calculate standardized layout dimensions at 96 DPI
         const standardTextureSize: [number, number] = [CONSTANTS.CARD_WIDTH_PX, CONSTANTS.CARD_HEIGHT_PX];
 
+        const effectiveGlobalDarkenMode = getEffectiveGlobalDarkenMode(
+            globalSettings.darkenMode,
+            imageSource || null,
+            globalSettings.darkenApplyToScryfall,
+            globalSettings.darkenApplyToMpc,
+            globalSettings.darkenApplyToUploads
+        );
+
         // Resolve exact settings manually applied by the slider vs global parameters 
-        const activeDarkenMode = params.darkenUseGlobalSettings ? globalSettings.darkenMode : params.darkenMode;
+        const activeDarkenMode = params.darkenUseGlobalSettings ? effectiveGlobalDarkenMode : params.darkenMode;
         const activeDarkenAutoDetect = params.darkenUseGlobalSettings ? globalSettings.darkenAutoDetect : params.darkenAutoDetect;
 
         // Build temporary overrides object merging slider states and toggled globals for the external utility
@@ -324,7 +337,7 @@ function PixiCardPreviewInner({
         } catch (e) {
             console.warn('[PixiCardPreview] Render failed:', e);
         }
-    }, [isReady, params, darknessFactor, width, height, textureVersion, holoAnimationTick]);
+    }, [isReady, params, darknessFactor, width, height, textureVersion, holoAnimationTick, imageSource]);
 
     return (
         <canvas

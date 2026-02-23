@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { db, METADATA_CACHE_VERSION, type CachedMetadata } from "../db";
+import { db, METADATA_CACHE_VERSION, type CachedMetadata, ImageSource } from "../db";
 import type { CardOption } from "@/types";
 import { API_BASE } from "../constants";
 import { getCurrentSession } from "../helpers/importSession";
@@ -318,7 +318,7 @@ export function useCardEnrichment() {
 
                                             if (bestBack) {
                                                 const backUrl = getMpcAutofillImageUrl(bestBack.identifier);
-                                                const imgId = await addRemoteImage([backUrl], 1);
+                                                const imgId = await addRemoteImage([backUrl], 1, 'mpc');
                                                 if (imgId) backArtMap.set(card.uuid, imgId);
                                             }
                                         }
@@ -326,7 +326,7 @@ export function useCardEnrichment() {
                                         // Scryfall art: use image URL from enriched data's card_faces
                                         const backImageUrl = back.image_uris?.large || back.image_uris?.png || back.image_uris?.normal;
                                         if (backImageUrl) {
-                                            const imgId = await addRemoteImage([backImageUrl], 1);
+                                            const imgId = await addRemoteImage([backImageUrl], 1, ImageSource.Scryfall);
                                             if (imgId) backArtMap.set(card.uuid, imgId);
                                         }
                                     }
@@ -348,7 +348,7 @@ export function useCardEnrichment() {
 
                                             if (bestFront) {
                                                 const frontUrl = getMpcAutofillImageUrl(bestFront.identifier);
-                                                const imgId = await addRemoteImage([frontUrl], 1);
+                                                const imgId = await addRemoteImage([frontUrl], 1, 'mpc');
                                                 if (imgId) frontArtMap.set(card.uuid, imgId);
                                             }
                                         }
@@ -356,7 +356,7 @@ export function useCardEnrichment() {
                                         // Scryfall art: use image URL from enriched data's card_faces
                                         const frontImageUrl = front.image_uris?.large || front.image_uris?.png || front.image_uris?.normal;
                                         if (frontImageUrl) {
-                                            const imgId = await addRemoteImage([frontImageUrl], 1);
+                                            const imgId = await addRemoteImage([frontImageUrl], 1, ImageSource.Scryfall);
                                             if (imgId) frontArtMap.set(card.uuid, imgId);
                                         }
                                     }

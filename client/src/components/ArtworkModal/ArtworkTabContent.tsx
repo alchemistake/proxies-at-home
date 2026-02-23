@@ -141,7 +141,6 @@ export function ArtworkTabContent({
                             ]}
                             value={selectedFace}
                             onChange={(val) => {
-                                console.log(`[ArtworkTabContent] mobile ToggleButtonGroup onChange: val=${val}, current selectedFace=${selectedFace}`);
                                 setSelectedFace?.(val);
                                 if (val === 'back' && !linkedBackCard && !isDFC) {
                                     setShowCardbackLibrary(true);

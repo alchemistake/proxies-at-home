@@ -46,37 +46,32 @@ global.Worker = MockWorker as unknown as typeof Worker;
 vi.stubGlobal('fetch', vi.fn());
 
 import { db } from './db';
+import { debugLog } from './helpers/debug.ts';
 
 afterAll(async () => {
   // Ensure we are using real timers for the cleanup delay,
   // in case a test file left fake timers active.
   vi.useRealTimers();
 
-  // console.log('[vitest.setup] Starting global teardown');
-
   try {
     // Clean up ImageProcessor workers synchronously (now that cancelAll is implemented)
     ImageProcessor.destroyAll();
-    // console.log('[vitest.setup] ImageProcessor destroyed');
 
     // Clean up EffectProcessor workers
     const { destroyEffectProcessor } = await import('./helpers/effectCache');
     destroyEffectProcessor();
-    // console.log('[vitest.setup] EffectProcessor destroyed');
 
     // Close Dexie connection with a timeout to prevent hanging
     if (db) {
       if (db.isOpen()) {
         try {
           db.close();
-        } catch (e) { /* ignore */ }
+        } catch (e) { debugLog(e) }
       }
     }
   } catch (e) {
     console.error('[vitest.setup] Error during teardown:', e);
   }
-
-  // console.log('[vitest.setup] Teardown complete');
 
   // Force exit to prevent hanging processes (e.g. from JSDOM or other libs)
   // This is a pragmatic fix for the persistent "close timed out" error.

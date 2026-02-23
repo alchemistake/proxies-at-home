@@ -5,6 +5,7 @@
 
 import type { RenderParams } from '../components/CardCanvas/types';
 import { DEFAULT_RENDER_PARAMS } from '../components/CardCanvas/types';
+import { DarkenMode } from '../../../shared/types';
 import type { CardOverrides } from '../../../shared/types';
 import { ADJUSTMENT_FRAGMENT, getWorkerAdjustmentShader } from '../shaders/adjustmentShader';
 import { hasActiveAdjustments } from './adjustmentUtils';
@@ -228,9 +229,9 @@ export interface UniformLocations {
 export function darkenModeToInt(mode: RenderParams['darkenMode']): number {
     switch (mode) {
         case 'none': return 0;
-        case 'darken-all': return 1;
-        case 'contrast-edges': return 2;
-        case 'contrast-full': return 3;
+        case DarkenMode.DarkenAll: return 1;
+        case DarkenMode.ContrastEdges: return 2;
+        case DarkenMode.ContrastFull: return 3;
         default: return 0;
     }
 }
@@ -492,7 +493,7 @@ export function overridesToRenderParams(overrides: CardOverrides, globalDarkenMo
  * darken-related settings for worker use.
  */
 export function hasAdvancedOverrides(overrides?: CardOverrides): boolean {
-    return hasActiveAdjustments(overrides, true);
+    return hasActiveAdjustments(overrides, false);
 }
 
 /**

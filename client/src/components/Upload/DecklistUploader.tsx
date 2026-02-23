@@ -75,7 +75,7 @@ export function DecklistUploader({ mobile, cardCount, onUploadComplete }: Props)
             const baseName = baseNameMatch ? baseNameMatch[1].trim() : cardName;
 
             // Add the image directly
-            const imageId = await addRemoteImage([mpcImageUrl], 1);
+            const imageId = await addRemoteImage([mpcImageUrl], 1, 'mpc');
 
             // Add the card with the image and mark for enrichment
             const intent: ImportIntent = {

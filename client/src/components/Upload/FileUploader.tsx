@@ -78,10 +78,6 @@ export function FileUploader({ mobile, onUploadComplete }: Props) {
                 preloadedData: {
                     hasBuiltInBleed: opts.hasBuiltInBleed,
                 },
-                cardOverrides: {
-                    darkenMode: 'none',
-                    darkenUseGlobalSettings: false,
-                },
                 sourcePreference: 'manual'
             };
             intents.push(intent);

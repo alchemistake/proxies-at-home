@@ -30,6 +30,11 @@ vi.mock('@/db', () => ({
             get: vi.fn(),
         },
     },
+    ImageSource: {
+        Scryfall: "scryfall",
+        MPC: "mpc",
+        UploadLibrary: "upload-library"
+    }
 }));
 
 // Mock BleedModeControl to simplify testing

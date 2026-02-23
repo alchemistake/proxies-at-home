@@ -12,6 +12,11 @@ vi.mock("../db", () => ({
             put: vi.fn(),
         },
     },
+    ImageSource: {
+        Scryfall: "scryfall",
+        MPC: "mpc",
+        UploadLibrary: "upload-library"
+    }
 }));
 
 describe("useUserPreferencesStore", () => {

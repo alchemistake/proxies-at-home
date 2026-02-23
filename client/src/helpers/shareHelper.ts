@@ -8,7 +8,6 @@
 import { API_BASE } from '../constants';
 import type { CardOption, CardOverrides } from '@/types';
 import { extractMpcIdentifierFromImageId } from './mpcAutofillApi';
-import { inferImageSource } from './imageSourceUtils';
 
 // ============================================================================
 // Types
@@ -253,29 +252,28 @@ function expandOverrides(compressed: Record<string, unknown>): CardOverrides {
  * Returns [type, id] or null if not shareable (upload library item)
  */
 function getCardIdentifier(card: CardOption): ['s' | 'm' | 'b', string] | null {
-    const source = inferImageSource(card.imageId);
-
     // 1. Check for Built-in Cardback
     // This must come first because cardbacks might be misidentified as other types
     if (card.imageId && card.imageId.startsWith('cardback_')) {
         return ['b', card.imageId];
     }
 
+    // Upload library items are not shareable
+    if (card.isUserUpload) {
+        return null;
+    }
+
     // 2. Check for MPC
-    if (source === 'mpc') {
+    if (card.imageId) {
         const mpcId = extractMpcIdentifierFromImageId(card.imageId);
         if (mpcId) return ['m', mpcId];
     }
 
-    if (source === 'scryfall' && card.imageId) {
-        // For Scryfall, we need set/number to reconstruct
-        // The imageId for Scryfall is typically a URL, so we use set+number
-        if (card.set && card.number) {
-            return ['s', `${card.set}/${card.number}`];
-        }
+    // 3. Scryfall
+    if (card.imageId && card.set && card.number) {
+        return ['s', `${card.set}/${card.number}`];
     }
 
-    // Upload library items are not shareable
     return null;
 }
 

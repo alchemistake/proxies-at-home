@@ -2,7 +2,7 @@ import { useSettingsStore } from "@/store/settings";
 import { Label, Select, Button } from "flowbite-react";
 import { ExportActions } from "../../LayoutSettings/ExportActions";
 import { ToggleButtonGroup, AutoTooltip } from "../../common";
-import { useMemo, useEffect, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import type { CardOption } from "@/types";
 import { settingsToCuttingTemplate, downloadCuttingTemplate } from "@/helpers/exportCuttingTemplate";
 import { CONSTANTS } from "@/constants/commonConstants";

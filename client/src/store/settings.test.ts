@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { useSettingsStore } from "./settings";
 import { CONSTANTS } from "@/constants/commonConstants";
+import { DarkenMode } from "../../../shared/types";
 
 // Mock dependencies
 vi.mock("./undoRedo", () => ({
@@ -423,8 +424,8 @@ describe("useSettingsStore", () => {
 
         it("setDarkenMode should update setting", () => {
             const { setDarkenMode } = useSettingsStore.getState();
-            setDarkenMode('darken-all');
-            expect(useSettingsStore.getState().darkenMode).toBe('darken-all');
+            setDarkenMode(DarkenMode.DarkenAll);
+            expect(useSettingsStore.getState().darkenMode).toBe(DarkenMode.DarkenAll);
         });
     });
 

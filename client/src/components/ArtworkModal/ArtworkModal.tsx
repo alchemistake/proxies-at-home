@@ -2,13 +2,9 @@ import { changeCardArtwork, createLinkedBackCard } from "@/helpers/dbUtils";
 import { parseImageIdFromUrl } from "@/helpers/imageHelper";
 import {
   getMpcAutofillImageUrl,
+  extractMpcIdentifierFromImageId,
   type MpcAutofillCard,
 } from "@/helpers/mpcAutofillApi";
-import {
-  getImageSourceSync,
-  isMpcSource,
-  isUploadLibrarySource,
-} from "@/helpers/imageSourceUtils";
 import type { UploadLibraryItem } from "@/helpers/uploadLibrary";
 import {
   getFaceNamesFromPrints,
@@ -127,10 +123,9 @@ export function ArtworkModal() {
     if (initialArtSource) {
       newSource = initialArtSource;
     } else if (modalCard?.imageId) {
-      const detectedSource = getImageSourceSync(modalCard.imageId);
-      if (isMpcSource(detectedSource)) {
+      if (extractMpcIdentifierFromImageId(modalCard.imageId)) {
         newSource = "mpc";
-      } else if (isUploadLibrarySource(detectedSource)) {
+      } else if (modalCard.isUserUpload) {
         newSource = "upload-library";
       } else {
         newSource = "scryfall";
@@ -143,7 +138,6 @@ export function ArtworkModal() {
     if (!isModalOpen) {
       setLastOpenCardUuid(undefined);
     } else if (modalCard && initialFace) {
-      console.log(`[ArtworkModal] MOUNT EFFECT: setFlipped(${modalCard.uuid}, ${initialFace === "back"}) — initialFace=${initialFace}, modalCard.name=${modalCard.name}`);
       useSelectionStore.getState().setFlipped([modalCard.uuid], initialFace === "back");
     }
   }, [isModalOpen, modalCard, initialFace]);
@@ -151,10 +145,9 @@ export function ArtworkModal() {
   // Sync tab change with physical card flip in viewport
   const handleFaceTabChange = useCallback(
     (face: "front" | "back") => {
-      console.log(`[ArtworkModal] handleFaceTabChange called: face=${face}, current selectedFace=${selectedFace}`);
       setSelectedFace(face);
     },
-    [selectedFace]
+    []
   );
 
   const setSelectedArtId = (artId: string) => {
@@ -213,8 +206,7 @@ export function ArtworkModal() {
   useEffect(() => {
     if (selectedFace === "back" && linkedBackCard?.imageId) {
       if (autoMpcSetForBackCardId.current !== linkedBackCard.imageId) {
-        const detectedSource = getImageSourceSync(linkedBackCard.imageId);
-        if (isMpcSource(detectedSource)) {
+        if (extractMpcIdentifierFromImageId(linkedBackCard.imageId)) {
           setArtSource("mpc");
           autoMpcSetForBackCardId.current = linkedBackCard.imageId;
         }
@@ -224,7 +216,6 @@ export function ArtworkModal() {
 
   const activeCard =
     selectedFace === "back" && linkedBackCard ? linkedBackCard : modalCard;
-  console.log(`[ArtworkModal] activeCard computed: selectedFace=${selectedFace}, hasLinkedBack=${!!linkedBackCard}, activeCard.name=${activeCard?.name}, activeCard.uuid=${activeCard?.uuid}`);
 
   const handleSaveName = useCallback(async () => {
     if (!editedName.trim() || !activeCard) return;
@@ -325,9 +316,7 @@ export function ArtworkModal() {
     !isUsingCardbackLibrary &&
     !showCardbackLibrary;
 
-  const isUploadLibraryItem = isUploadLibrarySource(
-    getImageSourceSync(activeCard?.imageId)
-  );
+  const isUploadLibraryItem = !!activeCard?.isUserUpload;
 
   const tabLabels = useMemo(
     () =>
@@ -395,7 +384,6 @@ export function ArtworkModal() {
 
   const applyArtworkToCards = useCallback(
     async (config: ArtApplicationConfig) => {
-      console.log(`[ArtworkModal] applyArtworkToCards ENTRY: targetImageId=${config.targetImageId?.substring(0, 20)}, cardName=${config.cardName}, selectedFace=${selectedFace}`);
       const {
         targetImageId,
         cardName,
@@ -468,7 +456,6 @@ export function ArtworkModal() {
       }
 
       if (modalCard?.uuid) {
-        console.log(`[ArtworkModal] applyArtworkToCards AFTER: setFlipped(${modalCard.uuid}, ${selectedFace === "back"}) — selectedFace=${selectedFace}`);
         useSelectionStore
           .getState()
           .setFlipped([modalCard.uuid], selectedFace === "back");
@@ -586,7 +573,7 @@ export function ArtworkModal() {
           newCardName || (shouldUpdateName ? newFaceName : resolved.name);
 
         // If the applied artwork is MPC or a Custom Upload, disable default darkening
-        const isMpcOrCustom = isUploadLibrarySource(getImageSourceSync(newImageId)) || artSource === 'mpc';
+        // Note: Handled by global source toggles now, no explicit override needed
 
         await applyArtworkToCards({
           targetImageId: newImageId,
@@ -594,7 +581,6 @@ export function ArtworkModal() {
           cardMetadata,
           previewImageUrls:
             isReplacing && resolved.imageId ? [resolved.imageId] : undefined,
-          overrides: isMpcOrCustom ? { darkenMode: 'none', darkenUseGlobalSettings: false } : undefined,
         });
 
         // Handle DFC back face linking
@@ -701,7 +687,6 @@ export function ArtworkModal() {
             type_line: resolved.type_line,
             mana_cost: resolved.mana_cost,
           },
-          overrides: { darkenMode: 'none', darkenUseGlobalSettings: false },
         });
 
         // Handle DFC back face linking
@@ -721,7 +706,6 @@ export function ArtworkModal() {
               hasBuiltInBleed:
                 (backTask as { hasBleed?: boolean }).hasBleed ?? false,
               usesDefaultCardback: false,
-              overrides: { darkenMode: 'none', darkenUseGlobalSettings: false },
             });
           } else {
             // Create new linked back card
@@ -732,7 +716,6 @@ export function ArtworkModal() {
               {
                 hasBuiltInBleed:
                   (backTask as { hasBleed?: boolean }).hasBleed ?? false,
-                overrides: { darkenMode: 'none', darkenUseGlobalSettings: false },
               }
             );
 
@@ -759,7 +742,6 @@ export function ArtworkModal() {
   }
 
   async function handleSelectUploadLibraryArt(upload: UploadLibraryItem) {
-    console.log(`[ArtworkModal] handleSelectUploadLibraryArt ENTRY: upload.hash=${upload.hash.substring(0, 8)}, upload.displayName=${upload.displayName}, linkedFront=${upload.linkedFrontHash?.substring(0, 8)}, linkedBack=${upload.linkedBackHash?.substring(0, 8)}, selectedFace=${selectedFace}, activeCard=${activeCard?.name}`);
     if (!activeCard || !modalCard) {
       console.warn(`[ArtworkModal] handleSelectUploadLibraryArt aborted because activeCard or modalCard is missing.`);
       return;
@@ -818,7 +800,6 @@ export function ArtworkModal() {
         ? { set: upload.canonicalCardSet, number: upload.canonicalCardNumber }
         : undefined,
       cardToUpdate: targetCardForFrontFace,
-      overrides: { darkenMode: 'none', darkenUseGlobalSettings: false },
     });
 
     if (backItemHash && backItemName && isDfcUpload) {
@@ -830,7 +811,6 @@ export function ArtworkModal() {
           name: backItemName,
           hasBuiltInBleed: backHasBleed,
           usesDefaultCardback: false,
-          overrides: { darkenMode: 'none', darkenUseGlobalSettings: false },
         });
       } else {
         await createLinkedBackCard(
@@ -839,7 +819,6 @@ export function ArtworkModal() {
           backItemName,
           {
             hasBuiltInBleed: backHasBleed,
-            overrides: { darkenMode: 'none', darkenUseGlobalSettings: false },
           }
         );
       }
@@ -853,10 +832,8 @@ export function ArtworkModal() {
     }
 
     if (faceToNavigateTo && faceToNavigateTo !== selectedFace) {
-      console.log(`[ArtworkModal] handleSelectUploadLibraryArt: navigating to face=${faceToNavigateTo} via handleFaceTabChange`);
       handleFaceTabChange(faceToNavigateTo);
     } else if (faceToNavigateTo) {
-      console.log(`[ArtworkModal] handleSelectUploadLibraryArt: setFlipped(${modalCard.uuid}, ${faceToNavigateTo === "back"}) — faceToNavigateTo=${faceToNavigateTo}`);
       useSelectionStore.getState().setFlipped([modalCard.uuid], faceToNavigateTo === "back");
     }
   }
@@ -946,7 +923,6 @@ export function ArtworkModal() {
     );
 
     if (modalCard?.uuid) {
-      console.log(`[ArtworkModal] handleSelectCardback: setFlipped(${modalCard.uuid}, ${selectedFace === "back"}) — selectedFace=${selectedFace}`);
       useSelectionStore
         .getState()
         .setFlipped([modalCard.uuid], selectedFace === "back");

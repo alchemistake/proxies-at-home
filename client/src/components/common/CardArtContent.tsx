@@ -18,7 +18,6 @@ import {
   getMpcAutofillImageUrl,
   extractMpcIdentifierFromImageId,
 } from "@/helpers/mpcAutofillApi";
-import { inferImageSource } from "@/helpers/imageSourceUtils";
 import { fetchScryfallSets } from "@/helpers/scryfallApi";
 import type { ScryfallCard, PrintInfo } from "../../../../shared/types";
 import { useUserPreferencesStore } from "@/store";
@@ -27,6 +26,7 @@ import {
   getUploadLibraryItems,
   type UploadLibraryItem,
 } from "@/helpers/uploadLibrary";
+import { ImageSource } from '@/db';
 import { UploadLibraryGrid } from '../Upload/UploadLibraryGrid';
 /**
  * Hook to maintain a stable sort key that only updates on specific triggers:
@@ -155,7 +155,7 @@ export function CardArtContent({
 
   // Fetch items when source is upload-library
   useEffect(() => {
-    if (artSource === 'upload-library') {
+    if (artSource === ImageSource.UploadLibrary) {
       getUploadLibraryItems().then(setUploadLibraryItems);
     }
   }, [artSource]);
@@ -166,7 +166,6 @@ export function CardArtContent({
   }, []);
 
   const handleUploadLibraryItemSelect = useCallback((item: UploadLibraryItem) => {
-    console.log(`[CardArtContent] handleUploadLibraryItemSelect: hash=${item.hash.substring(0, 8)}, displayName=${item.displayName}, linkedFront=${item.linkedFrontHash?.substring(0, 8)}, linkedBack=${item.linkedBackHash?.substring(0, 8)}`);
     if (onUploadLibraryItemSelect) {
       onUploadLibraryItemSelect(item);
     } else {
@@ -227,12 +226,8 @@ export function CardArtContent({
     initialPrints,
   });
 
-  // Helper to detect if the selected art is MPC (for sorting/highlighting in the right source)
-  // Uses inferImageSource for unified detection, extractMpcIdentifierFromImageId for ID extraction
   const selectedMpcId = useMemo(() => {
     if (!selectedArtId) return undefined;
-    const source = inferImageSource(selectedArtId);
-    if (source !== "mpc") return undefined;
     return extractMpcIdentifierFromImageId(selectedArtId) ?? undefined;
   }, [selectedArtId]);
   // MPC Search Hooks - sorting is done in CardArtContent using mpcSortKey for consistency

@@ -2,10 +2,11 @@ import { create } from "zustand";
 import { recordSettingChange } from "../helpers/undoableSettings";
 import { useUndoRedoStore } from "./undoRedo";
 import { CONSTANTS } from "@/constants/commonConstants";
+import { DarkenMode } from '../../../shared/types';
+import { ImageSource } from '../db';
 
 export type LayoutPreset = "A4" | "A3" | "Letter" | "Tabloid" | "Legal" | "ArchA" | "ArchB" | "SuperB" | "A2" | "A1" | "Custom";
 export type PageOrientation = "portrait" | "landscape";
-export type DarkenMode = 'none' | 'darken-all' | 'contrast-edges' | 'contrast-full';
 
 export type Store = {
   pageSizeUnit: "mm" | "in";
@@ -56,6 +57,12 @@ export type Store = {
   setDarkenBrightness: (value: number) => void;
   darkenAutoDetect: boolean;
   setDarkenAutoDetect: (value: boolean) => void;
+  darkenApplyToScryfall: boolean;
+  setDarkenApplyToScryfall: (value: boolean) => void;
+  darkenApplyToMpc: boolean;
+  setDarkenApplyToMpc: (value: boolean) => void;
+  darkenApplyToUploads: boolean;
+  setDarkenApplyToUploads: (value: boolean) => void;
   guideColor: string;
   setGuideColor: (value: string) => void;
   guideWidth: number;
@@ -133,8 +140,8 @@ export type Store = {
   mpcFuzzySearch: boolean;
   setMpcFuzzySearch: (enabled: boolean) => void;
   // Preferred art source when opening artwork modal
-  preferredArtSource: 'scryfall' | 'mpc';
-  setPreferredArtSource: (value: 'scryfall' | 'mpc') => void;
+  preferredArtSource: typeof ImageSource.Scryfall | typeof ImageSource.MPC;
+  setPreferredArtSource: (value: typeof ImageSource.Scryfall | typeof ImageSource.MPC) => void;
   setAllSettings: (settings: Partial<Store>) => void;
   hasHydrated: boolean;
   setHasHydrated: (value: boolean) => void;
@@ -164,12 +171,15 @@ const defaultPageSettings = {
   // noBleedSourceAmount is implicitly 0
   noBleedTargetMode: 'global' as 'global' | 'manual' | 'none', // 'global' | 'manual' | 'none'
   noBleedTargetAmount: 1,
-  darkenMode: 'contrast-edges' as DarkenMode,
+  darkenMode: DarkenMode.ContrastEdges,
   darkenContrast: 2.0,
   darkenEdgeWidth: 0.08,
   darkenAmount: 1.0,
   darkenBrightness: -50,
   darkenAutoDetect: true,
+  darkenApplyToScryfall: true,
+  darkenApplyToMpc: false,
+  darkenApplyToUploads: false,
   guideColor: "#39FF14",
   guideWidth: 1,
   cardSpacingMm: 0,
@@ -206,7 +216,7 @@ const defaultPageSettings = {
   autoImportTokens: false,
   mpcFuzzySearch: true, // Default to fuzzy search enabled
   // Preferred art source
-  preferredArtSource: 'scryfall' as 'scryfall' | 'mpc',
+  preferredArtSource: ImageSource.Scryfall,
 };
 
 const layoutPresetsSizes: Record<
@@ -374,6 +384,18 @@ export const useSettingsStore = create<Store>()((set) => ({
     recordSettingChange("darkenAutoDetect", state.darkenAutoDetect);
     return { darkenAutoDetect: value };
   }),
+  setDarkenApplyToScryfall: (value) => set((state) => {
+    recordSettingChange("darkenApplyToScryfall", state.darkenApplyToScryfall);
+    return { darkenApplyToScryfall: value };
+  }),
+  setDarkenApplyToMpc: (value) => set((state) => {
+    recordSettingChange("darkenApplyToMpc", state.darkenApplyToMpc);
+    return { darkenApplyToMpc: value };
+  }),
+  setDarkenApplyToUploads: (value) => set((state) => {
+    recordSettingChange("darkenApplyToUploads", state.darkenApplyToUploads);
+    return { darkenApplyToUploads: value };
+  }),
   setGuideColor: (value) => set((state) => {
     recordSettingChange("guideColor", state.guideColor);
     return { guideColor: value };
@@ -540,6 +562,9 @@ export const useSettingsStore = create<Store>()((set) => ({
       bleedEdge: currentState.bleedEdge,
       bleedEdgeWidth: currentState.bleedEdgeWidth,
       darkenMode: currentState.darkenMode,
+      darkenApplyToScryfall: currentState.darkenApplyToScryfall,
+      darkenApplyToMpc: currentState.darkenApplyToMpc,
+      darkenApplyToUploads: currentState.darkenApplyToUploads,
       guideColor: currentState.guideColor,
       guideWidth: currentState.guideWidth,
       cardSpacingMm: currentState.cardSpacingMm,

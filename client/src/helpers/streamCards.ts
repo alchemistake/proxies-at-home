@@ -6,7 +6,7 @@ import { useSettingsStore } from "../store";
 import { findBestMpcMatches, parseMpcCardLogic } from "./mpcImportIntegration";
 import { API_BASE } from "../constants";
 import { CONSTANTS } from "@/constants/commonConstants";
-import { db } from "../db";
+import { db, ImageSource } from "../db";
 import { getMpcAutofillImageUrl } from "./mpcAutofillApi";
 import { convertScryfallToCardOptions, persistResolvedCards } from "./cardConverter";
 import { fetchTokenParts } from "./tokenApi";
@@ -157,7 +157,7 @@ export async function streamCards(options: StreamCardsOptions): Promise<StreamCa
 
         const { info, instances } = entry;
         const imageUrl = getMpcAutofillImageUrl(info.mpcIdentifier!);
-        const imageId = await addRemoteImage([imageUrl], instances.length);
+        const imageId = await addRemoteImage([imageUrl], instances.length, ImageSource.MPC);
 
         const cardsToAdd = instances.map(instance => createCardOption({
             name: instance.name,
@@ -168,8 +168,8 @@ export async function streamCards(options: StreamCardsOptions): Promise<StreamCa
             category: instance.category,
             // For MPC cards, merge darken-off defaults with any existing overrides
             overrides: instance.overrides
-                ? { darkenMode: 'none' as const, darkenUseGlobalSettings: false, ...instance.overrides }
-                : { darkenMode: 'none' as const, darkenUseGlobalSettings: false },
+                ? { ...instance.overrides }
+                : {},
             projectId,
         },
             instance.order
@@ -290,23 +290,22 @@ export async function streamCards(options: StreamCardsOptions): Promise<StreamCa
                 const entry = quantityByKey.get(key);
                 if (!entry) continue;
 
-                const imageId = await addRemoteImage([match.imageUrl], entry.instances.length);
+                const imageId = await addRemoteImage([match.imageUrl], entry.instances.length, ImageSource.MPC);
                 const { name: cardName, hasBuiltInBleed, needsEnrichment } = parseMpcCardLogic(match.mpcCard);
 
                 // Update all placeholder cards for this key with the MPC image
                 await db.transaction('rw', db.cards, async () => {
                     for (const uuid of placeholderUuids) {
                         const existingCard = await db.cards.get(uuid);
+                        const currentOverrides = existingCard?.overrides || {};
                         await db.cards.update(uuid, {
                             name: cardName,
                             imageId,
                             hasBuiltInBleed,
                             needsEnrichment,
                             overrides: {
-                                ...existingCard?.overrides,
-                                darkenMode: 'none',
-                                darkenUseGlobalSettings: false,
-                            }
+                                ...currentOverrides,
+                            },
                         });
                     }
                 });
@@ -511,7 +510,7 @@ export async function streamCards(options: StreamCardsOptions): Promise<StreamCa
                             const backCard = await fetchCardBySetAndNumber(entry.info.linkedBackSet, entry.info.linkedBackNumber);
                             if (backCard && backCard.imageUrls.length > 0) {
                                 // Add as remote image
-                                backImageId = await addRemoteImage([backCard.imageUrls[0]], quantity);
+                                backImageId = await addRemoteImage([backCard.imageUrls[0]], quantity, ImageSource.Scryfall);
                             }
                         } catch (e) {
                             console.warn(`[streamCards] Failed to resolve custom back Scryfall card`, e);
@@ -530,7 +529,7 @@ export async function streamCards(options: StreamCardsOptions): Promise<StreamCa
                                 ? backImageId
                                 : getMpcAutofillImageUrl(backImageId);
 
-                            const resolvedId = await addRemoteImage([url], quantity);
+                            const resolvedId = await addRemoteImage([url], quantity, ImageSource.MPC);
                             if (resolvedId) backImageId = resolvedId;
                         }
 
@@ -556,7 +555,7 @@ export async function streamCards(options: StreamCardsOptions): Promise<StreamCa
                                 const instancePref = instances[i]?.preferredImageId;
                                 if (instancePref) {
                                     try {
-                                        const resolved = await addRemoteImage([instancePref], 1);
+                                        const resolved = await addRemoteImage([instancePref], 1, ImageSource.MPC);
                                         if (resolved) imageId = resolved;
                                     } catch (e) {
                                         console.warn(`[streamCards] Failed to resolve preferredImageId for placeholder`, e);
@@ -616,7 +615,7 @@ export async function streamCards(options: StreamCardsOptions): Promise<StreamCa
                                 const pid = instance.preferredImageId;
                                 if (pid && !preferredImageCache.has(pid)) {
                                     try {
-                                        const resolved = await addRemoteImage([pid], 1);
+                                        const resolved = await addRemoteImage([pid], 1, ImageSource.MPC);
                                         if (resolved) preferredImageCache.set(pid, resolved);
                                     } catch (e) {
                                         console.warn(`[streamCards] Failed to resolve preferredImageId`, e);

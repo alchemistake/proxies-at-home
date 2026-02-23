@@ -50,7 +50,10 @@ export type UndoableSettingKey =
     | "cutGuideLengthMm"
     | "perCardBackOffsets"
     | "registrationMarks"
-    | "registrationMarksPortrait";
+    | "registrationMarksPortrait"
+    | "darkenApplyToScryfall"
+    | "darkenApplyToMpc"
+    | "darkenApplyToUploads";
 
 // Human-readable descriptions for each setting
 const settingDescriptions: Record<UndoableSettingKey, string> = {
@@ -97,6 +100,9 @@ const settingDescriptions: Record<UndoableSettingKey, string> = {
     perCardBackOffsets: "card back offsets",
     registrationMarks: "registration marks",
     registrationMarksPortrait: "registration marks (portrait)",
+    darkenApplyToScryfall: "darken apply to Scryfall",
+    darkenApplyToMpc: "darken apply to MPC",
+    darkenApplyToUploads: "darken apply to User Uploads",
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

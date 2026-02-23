@@ -6,6 +6,7 @@
 import type { SourceTypeSettings } from './layout';
 import { useSettingsStore } from '../store/settings';
 import { CONSTANTS } from '@/constants/commonConstants';
+import type { DarkenMode } from '@/types';
 
 /**
  * Normalized settings for worker consumption.
@@ -23,13 +24,16 @@ interface WorkerBleedSettings {
     withBleedSourceAmount: number;
 
     // Processing options
-    darkenMode: 'none' | 'darken-all' | 'contrast-edges' | 'contrast-full';
+    darkenMode: DarkenMode;
     darkenThreshold: number;
     darkenContrast: number;
     darkenEdgeWidth: number;
     darkenAmount: number;
     darkenBrightness: number;
     darkenAutoDetect: boolean;
+    darkenApplyToScryfall: boolean;
+    darkenApplyToMpc: boolean;
+    darkenApplyToUploads: boolean;
     dpi: number;
 }
 
@@ -104,6 +108,9 @@ function serializeBleedSettingsForWorker(): WorkerBleedSettings {
         darkenAmount: state.darkenAmount,
         darkenBrightness: state.darkenBrightness,
         darkenAutoDetect: state.darkenAutoDetect,
+        darkenApplyToScryfall: state.darkenApplyToScryfall,
+        darkenApplyToMpc: state.darkenApplyToMpc,
+        darkenApplyToUploads: state.darkenApplyToUploads,
         dpi: state.dpi,
     };
 }

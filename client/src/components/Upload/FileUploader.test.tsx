@@ -36,6 +36,11 @@ vi.mock('@/db', () => ({
             toArray: vi.fn().mockResolvedValue([]),
         },
     },
+    ImageSource: {
+        Scryfall: "scryfall",
+        MPC: "mpc",
+        UploadLibrary: "upload-library"
+    }
 }));
 
 import { FileUploader } from './FileUploader';

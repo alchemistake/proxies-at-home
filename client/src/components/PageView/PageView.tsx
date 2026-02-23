@@ -548,9 +548,9 @@ export function PageView({ cards, allCards, images, mobile, active = true }: Pag
 
   // Map from image ID to image blob data
   const imageDataById = useMemo(() => {
-    const map = new Map<string, { displayBlob?: Blob; darknessFactor?: number }>();
+    const map = new Map<string, { displayBlob?: Blob; darknessFactor?: number; source?: import('@/db').ImageSource }>();
     for (const img of images) {
-      map.set(img.id, { displayBlob: img.displayBlob, darknessFactor: img.darknessFactor });
+      map.set(img.id, { displayBlob: img.displayBlob, darknessFactor: img.darknessFactor, source: img.source });
     }
     return map;
   }, [images]);
@@ -652,8 +652,9 @@ export function PageView({ cards, allCards, images, mobile, active = true }: Pag
           backBlob: backImageData?.displayBlob,
           frontImageId: card.imageId,
           backImageId: backCard?.imageId,
-          backOverrides: backCard?.overrides, // Back card's overrides for per-face rendering
+          backOverrides: backCard?.overrides,
           darknessFactor: imageData?.darknessFactor ?? 0.5,
+          imageSource: imageData?.source,
           globalX: xMm * CONSTANTS.DISPLAY_MM_TO_PX,
           globalY: topPaddingPx + CONSTANTS.PAGE_GAP_PX + pageIndex * (pageHeightPx + CONSTANTS.PAGE_GAP_PX) + yMm * CONSTANTS.DISPLAY_MM_TO_PX,
           width: layout.cardWidthMm * CONSTANTS.DISPLAY_MM_TO_PX,

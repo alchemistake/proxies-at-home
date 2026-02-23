@@ -21,15 +21,7 @@ vi.mock('./mpcAutofillApi', () => ({
     }),
 }));
 
-vi.mock('./imageSourceUtils', () => ({
-    inferImageSource: vi.fn((id: string | undefined) => {
-        if (!id) return 'unknown';
-        if (id.startsWith('mpc_')) return 'mpc';
-        if (id.includes('scryfall')) return 'scryfall';
-        if (id.startsWith('local_')) return 'upload-library';
-        return 'unknown';
-    }),
-}));
+
 
 describe('shareHelper', () => {
     beforeEach(() => {

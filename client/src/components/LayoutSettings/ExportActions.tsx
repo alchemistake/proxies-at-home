@@ -13,7 +13,6 @@ import { serializePdfSettingsForWorker } from "@/helpers/serializeSettingsForWor
 import { useFilteredAndSortedCards } from "@/hooks/useFilteredAndSortedCards";
 import { SplitButton } from "../common";
 import { extractMpcIdentifierFromImageId } from "@/helpers/mpcAutofillApi";
-import { inferImageSource } from "@/helpers/imageSourceUtils";
 import type { CardOption } from "../../../../shared/types";
 import { CONSTANTS } from "@/constants/commonConstants";
 
@@ -139,18 +138,13 @@ export function ExportActions({ cards }: Props) {
       let mpcDefaultBackId: string | undefined;
 
       if (defaultCardbackId) {
-        // Check if it's a custom cardback with an MPC source
         const cb = await db.cardbacks.get(defaultCardbackId);
         if (cb) {
-          // Check source from URL or ID, only extract MPC ID if source is 'mpc'
-          const cbSource = inferImageSource(cb.sourceUrl) ?? inferImageSource(cb.id);
-          if (cbSource === 'mpc') {
-            if (cb.sourceUrl) {
-              mpcDefaultBackId = extractMpcIdentifierFromImageId(cb.sourceUrl) || undefined;
-            }
-            if (!mpcDefaultBackId) {
-              mpcDefaultBackId = extractMpcIdentifierFromImageId(cb.id) || undefined;
-            }
+          if (cb.sourceUrl) {
+            mpcDefaultBackId = extractMpcIdentifierFromImageId(cb.sourceUrl) || undefined;
+          }
+          if (!mpcDefaultBackId) {
+            mpcDefaultBackId = extractMpcIdentifierFromImageId(cb.id) || undefined;
           }
         }
       }

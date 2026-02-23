@@ -1,3 +1,12 @@
+export const DarkenMode = {
+  None: 'none',
+  DarkenAll: 'darken-all',
+  ContrastEdges: 'contrast-edges',
+  ContrastFull: 'contrast-full'
+} as const;
+
+export type DarkenMode = typeof DarkenMode[keyof typeof DarkenMode];
+
 /**
  * Per-card rendering overrides.
  * Used in the Card Editor for fine-tuning individual cards.
@@ -10,7 +19,7 @@ export interface CardOverrides {
   saturation?: number; // 0-2.0
 
   // Darkening
-  darkenMode?: "none" | "darken-all" | "contrast-edges" | "contrast-full";
+  darkenMode?: DarkenMode;
   darkenThreshold?: number; // 0-255
   darkenContrast?: number; // 0.5-2.0
   darkenEdgeWidth?: number; // 0-100

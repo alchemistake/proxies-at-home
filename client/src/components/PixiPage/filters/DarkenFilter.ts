@@ -5,8 +5,8 @@
  */
 
 import { Filter, GlProgram } from 'pixi.js';
-import type { DarkenMode } from '../../../store/settings';
-import { DARKEN_UNIFORMS_GLSL, DARKEN_FUNCTIONS_GLSL } from '../../../shaders/darkenEffects';
+import { DarkenMode } from '../../../../../shared/types';
+import { DARKEN_UNIFORMS_GLSL, DARKEN_FUNCTIONS_GLSL } from '@/shaders/darkenEffects';
 
 // Standard vertex shader that passes texture coordinates correctly
 const VERTEX = `
@@ -77,12 +77,12 @@ void main() {
 /**
  * Convert DarkenMode string to shader int
  */
-function darkenModeToInt(mode: DarkenMode): number {
+function darkenModeToInt(mode: typeof DarkenMode[keyof typeof DarkenMode]): number {
     switch (mode) {
-        case 'none': return 0;
-        case 'darken-all': return 1;
-        case 'contrast-edges': return 2;
-        case 'contrast-full': return 3;
+        case DarkenMode.None: return 0;
+        case DarkenMode.DarkenAll: return 1;
+        case DarkenMode.ContrastEdges: return 2;
+        case DarkenMode.ContrastFull: return 3;
         default: return 0;
     }
 }
@@ -117,8 +117,8 @@ export class DarkenFilter extends Filter {
     get darknessFactor(): number { return this.resources.darkenUniforms.uniforms.u_darknessFactor; }
     set darknessFactor(value: number) { this.resources.darkenUniforms.uniforms.u_darknessFactor = value; }
 
-    get darkenMode(): DarkenMode { return 'none'; }
-    set darkenMode(value: DarkenMode) {
+    get darkenMode(): typeof DarkenMode[keyof typeof DarkenMode] { return (this.resources.darkenUniforms.uniforms.u_darkenMode) as typeof DarkenMode[keyof typeof DarkenMode]; }
+    set darkenMode(value: typeof DarkenMode[keyof typeof DarkenMode]) {
         this.resources.darkenUniforms.uniforms.u_darkenMode = darkenModeToInt(value);
     }
 

@@ -5,6 +5,7 @@ import React from 'react';
 import { DarkPixelsSection } from './DarkPixelsSection';
 import type { RenderParams } from '../../CardCanvas';
 import { DEFAULT_RENDER_PARAMS } from '../../CardCanvas';
+import { DarkenMode } from '../../../../../shared/types';
 
 // Mock flowbite-react components
 vi.mock('flowbite-react', () => ({
@@ -38,16 +39,21 @@ vi.mock('../../common/StyledSlider', () => ({
 describe('DarkPixelsSection', () => {
     const mockUpdateParam = vi.fn();
 
+    const defaultParams = {
+        zoom: 1,
+        darkenMode: DarkenMode.None,
+        darkenAmount: 0.5,
+        darkenEdgeWidth: 0.15,
+        darkenContrast: 1,
+        darkenBrightness: 0,
+        darkenAutoDetect: true,
+        darkenUseGlobalSettings: false,
+    };
+
     const createParams = (overrides?: Partial<RenderParams>): RenderParams => ({
         ...DEFAULT_RENDER_PARAMS,
-        darkenMode: 'none',
-        darkenUseGlobalSettings: true,
-        darkenAmount: 0.5,
-        darkenThreshold: 128,
-        darkenContrast: 1.5,
-        darkenBrightness: 0,
-        darkenEdgeWidth: 0.5,
-        darkenAutoDetect: false,
+        ...defaultParams, // Use the new defaultParams
+        darkenThreshold: 128, // Keep this specific default if not in defaultParams
         ...overrides,
     });
 
@@ -69,6 +75,10 @@ describe('DarkPixelsSection', () => {
             expect(screen.getByText('Use Global Settings')).toBeInTheDocument();
         });
 
+        it('should NOT render edge width slider for Contract Full mode', () => {
+            render(<DarkPixelsSection params={createParams({ darkenMode: DarkenMode.ContrastFull as DarkenMode })} updateParam={mockUpdateParam} defaultParams={DEFAULT_RENDER_PARAMS} />);
+            expect(screen.queryByTestId('slider-edge-width')).toBeNull();
+        });
         it('should render Mode select', () => {
             render(
                 <DarkPixelsSection
@@ -111,9 +121,9 @@ describe('DarkPixelsSection', () => {
             );
 
             const select = screen.getByTestId('darken-mode-select');
-            fireEvent.change(select, { target: { value: 'darken-all' } });
+            fireEvent.change(select, { target: { value: DarkenMode.DarkenAll } });
 
-            expect(mockUpdateParam).toHaveBeenCalledWith('darkenMode', 'darken-all');
+            expect(mockUpdateParam).toHaveBeenCalledWith('darkenMode', DarkenMode.DarkenAll);
         });
     });
 
@@ -121,7 +131,7 @@ describe('DarkPixelsSection', () => {
         it('should show Amount and Edge Width sliders when mode is not none', () => {
             render(
                 <DarkPixelsSection
-                    params={createParams({ darkenMode: 'darken-all', darkenUseGlobalSettings: false })}
+                    params={createParams({ darkenMode: DarkenMode.DarkenAll, darkenUseGlobalSettings: false })}
                     updateParam={mockUpdateParam}
                     defaultParams={DEFAULT_RENDER_PARAMS}
                 />
@@ -134,7 +144,7 @@ describe('DarkPixelsSection', () => {
         it('should not show sliders when mode is none', () => {
             render(
                 <DarkPixelsSection
-                    params={createParams({ darkenMode: 'none' })}
+                    params={createParams({ darkenMode: DarkenMode.None })}
                     updateParam={mockUpdateParam}
                     defaultParams={DEFAULT_RENDER_PARAMS}
                 />
@@ -146,7 +156,7 @@ describe('DarkPixelsSection', () => {
         it('should show Threshold slider when mode is darken-all', () => {
             render(
                 <DarkPixelsSection
-                    params={createParams({ darkenMode: 'darken-all', darkenUseGlobalSettings: false })}
+                    params={createParams({ darkenMode: DarkenMode.DarkenAll, darkenUseGlobalSettings: false })}
                     updateParam={mockUpdateParam}
                     defaultParams={DEFAULT_RENDER_PARAMS}
                 />
@@ -158,7 +168,7 @@ describe('DarkPixelsSection', () => {
         it('should show Auto Detect checkbox for contrast modes', () => {
             render(
                 <DarkPixelsSection
-                    params={createParams({ darkenMode: 'contrast-edges', darkenUseGlobalSettings: false })}
+                    params={createParams({ darkenMode: DarkenMode.ContrastEdges, darkenUseGlobalSettings: false })}
                     updateParam={mockUpdateParam}
                     defaultParams={DEFAULT_RENDER_PARAMS}
                 />
@@ -172,7 +182,7 @@ describe('DarkPixelsSection', () => {
             render(
                 <DarkPixelsSection
                     params={createParams({
-                        darkenMode: 'contrast-edges',
+                        darkenMode: DarkenMode.ContrastEdges,
                         darkenUseGlobalSettings: false,
                         darkenAutoDetect: false
                     })}
@@ -189,7 +199,7 @@ describe('DarkPixelsSection', () => {
             render(
                 <DarkPixelsSection
                     params={createParams({
-                        darkenMode: 'contrast-edges',
+                        darkenMode: DarkenMode.ContrastEdges,
                         darkenUseGlobalSettings: false,
                         darkenAutoDetect: true
                     })}
@@ -206,7 +216,7 @@ describe('DarkPixelsSection', () => {
             render(
                 <DarkPixelsSection
                     params={createParams({
-                        darkenMode: 'contrast-full',
+                        darkenMode: DarkenMode.ContrastFull,
                         darkenUseGlobalSettings: false,
                         darkenAutoDetect: false
                     })}
@@ -217,6 +227,11 @@ describe('DarkPixelsSection', () => {
 
             expect(screen.getByTestId('slider-contrast')).toBeInTheDocument();
             expect(screen.getByTestId('slider-brightness')).toBeInTheDocument();
+        });
+        it('should NOT render contrast sliders for Darken All mode', () => {
+            render(<DarkPixelsSection params={createParams({ darkenMode: DarkenMode.DarkenAll as DarkenMode })} updateParam={mockUpdateParam} defaultParams={DEFAULT_RENDER_PARAMS} />);
+            expect(screen.queryByTestId('slider-contrast')).toBeNull();
+            expect(screen.queryByTestId('slider-brightness')).toBeNull();
         });
     });
 

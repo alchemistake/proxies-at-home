@@ -137,7 +137,7 @@ const SortableSection = memo(function SortableSection({
 const SECTION_CONFIG: Record<string, { title: string; icon: React.ElementType; Content: React.ComponentType<SectionProps> }> = {
     basic: { title: 'Image Adjustments', icon: Sun, Content: BasicAdjustmentsSection },
     enhance: { title: 'Enhancements', icon: WandSparkles, Content: EnhanceSection },
-    darkPixels: { title: 'Dark Pixels', icon: Moon, Content: DarkPixelsSection },
+    darkPixels: { title: 'Darken Pixels', icon: Moon, Content: DarkPixelsSection },
     holographic: { title: 'Holographic', icon: Sparkles, Content: HolographicSection },
     colorReplace: { title: 'Color Replace', icon: Replace, Content: ColorReplaceSection },
     gamma: { title: 'Gamma', icon: Sun, Content: GammaSection },
@@ -540,6 +540,7 @@ export function CardEditorModal({
                                 {/* Render using shared PixiJS application for WebGL */}
                                 <PixiCardPreview
                                     imageBlob={baseTexture}
+                                    imageSource={currentImage?.source}
                                     darknessFactor={computedDarknessFactor}
                                     width={Math.round(PREVIEW_WIDTH * zoom)}
                                     height={Math.round(PREVIEW_HEIGHT * zoom)}

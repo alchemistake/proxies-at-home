@@ -1,11 +1,15 @@
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import type { CardOption } from "../../../shared/types";
+import { DarkenMode } from '../../../shared/types';
 import { type Image } from "@/db";
 import { hasAdvancedOverrides, overridesToRenderParams, renderCardWithOverridesWorker } from "./cardCanvasWorker";
 import { useSettingsStore } from "@/store/settings";
 import { getLocalBleedImageUrl } from "./imageHelper";
+import { renderBleedCanvasDirect } from "./webglImageProcessing";
+import { darkenModeToInt } from "../components/CardCanvas/types";
 import { setEffectCacheEntryWithDpi } from "./effectCache";
+import { getEffectiveGlobalDarkenMode } from "./imageSourceUtils";
 
 // Sanitize filename helper (simple local version sufficient for now, or could move to utils)
 function sanitizeFilename(name: string): string {
@@ -75,36 +79,96 @@ async function processCardForExport(
 
   // Prefer exportBlob (has bleed/processing applied) over originalBlob
   // Then select the appropriate darken mode version
-  const darkenMode = useSettingsStore.getState().darkenMode;
-  const cardDarkenMode = c.overrides?.darkenMode ?? darkenMode;
+  const globalSettings = useSettingsStore.getState();
+  const darkenMode = globalSettings.darkenMode;
+  const useGlobalSettings = c.overrides?.darkenUseGlobalSettings ?? true;
+  const cardDarkenMode = c.overrides?.darkenMode;
+
+  const effectiveGlobalDarkenMode = getEffectiveGlobalDarkenMode(
+    darkenMode,
+    image?.source ?? null,
+    globalSettings.darkenApplyToScryfall,
+    globalSettings.darkenApplyToMpc,
+    globalSettings.darkenApplyToUploads
+  );
+
+  const effectiveDarkenMode = (useGlobalSettings ? effectiveGlobalDarkenMode : cardDarkenMode) ?? effectiveGlobalDarkenMode;
+
+  const r_darkenAutoDetect = c.overrides && !useGlobalSettings
+    ? (c.overrides.darkenAutoDetect ?? globalSettings.darkenAutoDetect ?? true)
+    : (globalSettings.darkenAutoDetect ?? true);
+
+  const resolveParam = (cardVal: number | undefined, globalVal: number) =>
+    (c.overrides && !useGlobalSettings) ? (cardVal ?? globalVal) : globalVal;
+
+  const isAutoContrast = r_darkenAutoDetect && (effectiveDarkenMode === 'contrast-edges' || effectiveDarkenMode === 'contrast-full');
+
+  const darkenOpts = {
+    darkenThreshold: resolveParam(c.overrides?.darkenThreshold, 30),
+    darkenContrast: isAutoContrast ? 2.0 : resolveParam(c.overrides?.darkenContrast, 2.0),
+    darkenEdgeWidth: resolveParam(c.overrides?.darkenEdgeWidth, 0.1),
+    darkenAmount: resolveParam(c.overrides?.darkenAmount, 1.0),
+    darkenBrightness: isAutoContrast ? -50 : resolveParam(c.overrides?.darkenBrightness, -50),
+    darkenAutoDetect: r_darkenAutoDetect
+  };
+
+  const needsCustomDarken = effectiveDarkenMode !== 'none' && (
+    darkenOpts.darkenThreshold !== 30 ||
+    darkenOpts.darkenContrast !== 2.0 ||
+    darkenOpts.darkenEdgeWidth !== 0.1 ||
+    darkenOpts.darkenAmount !== 1.0 ||
+    darkenOpts.darkenBrightness !== -50
+  );
 
   // Select the right export blob based on darken mode
   let selectedBlob: Blob | undefined;
-  if (cardDarkenMode === 'none') {
+  let mustRenderManually = needsCustomDarken;
+
+  if (needsCustomDarken) {
     selectedBlob = image?.exportBlob;
-  } else if (cardDarkenMode === 'darken-all') {
-    selectedBlob = image?.exportBlobDarkenAll ?? image?.exportBlobDarkened ?? image?.exportBlob;
-  } else if (cardDarkenMode === 'contrast-edges') {
-    selectedBlob = image?.exportBlobContrastEdges ?? image?.exportBlobDarkened ?? image?.exportBlob;
-  } else if (cardDarkenMode === 'contrast-full') {
-    selectedBlob = image?.exportBlobContrastFull ?? image?.exportBlobDarkened ?? image?.exportBlob;
+  } else if (effectiveDarkenMode === DarkenMode.None) {
+    selectedBlob = image?.exportBlob;
+  } else if (effectiveDarkenMode === DarkenMode.DarkenAll) {
+    selectedBlob = image?.exportBlobDarkenAll ?? image?.exportBlobDarkened;
+  } else if (effectiveDarkenMode === DarkenMode.ContrastEdges) {
+    selectedBlob = image?.exportBlobContrastEdges ?? image?.exportBlobDarkened;
+  } else if (effectiveDarkenMode === DarkenMode.ContrastFull) {
+    selectedBlob = image?.exportBlobContrastFull ?? image?.exportBlobDarkened;
   } else {
     selectedBlob = image?.exportBlob;
+  }
+
+  // If we asked for a specific darkened version and it wasn't cached,
+  // we must fall back to the base blob and render it manually.
+  if (!selectedBlob && effectiveDarkenMode !== 'none') {
+    selectedBlob = image?.exportBlob;
+    mustRenderManually = true;
   }
 
   if (selectedBlob) {
     blob = selectedBlob;
 
+    if (mustRenderManually) {
+      const bitmap = await createImageBitmap(blob);
+      const darkenCanvas = await renderBleedCanvasDirect(bitmap, bitmap.width, bitmap.height, {
+        darkenMode: darkenModeToInt(effectiveDarkenMode),
+        ...darkenOpts,
+        mimeType: blob.type === "image/webp" ? "image/webp" : "image/png"
+      });
+      bitmap.close();
+      blob = await darkenCanvas.convertToBlob({ type: blob.type === "image/webp" ? "image/webp" : "image/png" });
+    }
+
     // Apply advanced overrides (brightness, contrast, etc.) if present
     if (hasAdvancedOverrides(c.overrides)) {
-      const params = overridesToRenderParams(c.overrides!, cardDarkenMode);
+      const params = overridesToRenderParams(c.overrides!, effectiveDarkenMode);
       const bitmap = await createImageBitmap(blob);
       blob = await renderCardWithOverridesWorker(bitmap, params);
       bitmap.close();
       // Cache for future exports (fire-and-forget)
       // Use setEffectCacheEntry from helper instead of reimplementing logic
       if (c.imageId && c.overrides) {
-        const dpi = useSettingsStore.getState().dpi;
+        const dpi = globalSettings.dpi;
         void setEffectCacheEntryWithDpi(c.imageId, c.overrides, blob, dpi);
       }
     }

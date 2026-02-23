@@ -5,7 +5,7 @@
  */
 import { generateUUID } from "./uuid";
 
-import { db, type Image } from "@/db";
+import { db, ImageSource, type Image } from "../db";
 import type { CardOption } from "../../../shared/types";
 import {
     deleteCard,
@@ -609,7 +609,9 @@ export async function undoableAddCards(
                 // Retry up to 3 times with exponential backoff
                 for (let attempt = 0; attempt < 3; attempt++) {
                     try {
-                        await addRemoteImage([urlToFetch], 1);
+                        // If source starts with mpc, assumption is mpc. Fallback to scryfall if standard cards
+                        const assumedSource = urlToFetch.includes('mpcautofill') ? ImageSource.MPC : ImageSource.Scryfall;
+                        await addRemoteImage([urlToFetch], 1, assumedSource);
                         break; // Success - exit retry loop
                     } catch (e) {
                         if (attempt === 2) {

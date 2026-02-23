@@ -8,6 +8,7 @@ import { useUserPreferencesStore } from '@/store/userPreferences';
 import { DEFAULT_RENDER_PARAMS } from '../CardCanvas';
 import type { CardOption } from '../../../../shared/types';
 import type { Image } from '../../db';
+import { DarkenMode } from '../../../../shared/types';
 
 // Mock dependencies
 vi.mock('@/store/settings');
@@ -88,7 +89,7 @@ describe('CardEditorModal', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         const mockStore = {
-            darkenMode: 'none',
+            darkenMode: 'none' as typeof DarkenMode[keyof typeof DarkenMode],
             cardEditorSectionCollapsed: {},
             setCardEditorSectionCollapsed: vi.fn(),
             cardEditorSectionOrder: ['basic', 'darkPixels', 'enhance', 'holographic', 'colorReplace', 'gamma', 'colorEffects', 'borderEffects'],
@@ -567,7 +568,7 @@ describe('CardEditorModal', () => {
             const customCard = createMockCard({
                 overrides: {
                     darkenUseGlobalSettings: false,
-                    darkenMode: 'darken-all',
+                    darkenMode: 'darken-all' as typeof DarkenMode[keyof typeof DarkenMode],
                     darkenAmount: 0.8
                 }
             });
@@ -581,7 +582,7 @@ describe('CardEditorModal', () => {
 
             expect(mockOnApply).toHaveBeenCalledWith('test-front-uuid', expect.objectContaining({
                 darkenUseGlobalSettings: false,
-                darkenMode: 'darken-all',
+                darkenMode: DarkenMode.DarkenAll,
                 darkenAmount: 0.8
             }));
         });
@@ -609,14 +610,14 @@ describe('CardEditorModal', () => {
             const modifiedParams = {
                 ...DEFAULT_RENDER_PARAMS,
                 darkenUseGlobalSettings: false,
-                darkenMode: 'darken-all' as const,
+                darkenMode: DarkenMode.DarkenAll,
                 darkenAmount: 0.5,
             };
             const overrides = paramsToOverrides(modifiedParams);
             // When false, it should include ALL darken params even if they match defaults (impl detail: logic copies them)
             expect(overrides).toMatchObject({
                 darkenUseGlobalSettings: false,
-                darkenMode: 'darken-all',
+                darkenMode: DarkenMode.DarkenAll,
                 darkenAmount: 0.5,
             });
         });

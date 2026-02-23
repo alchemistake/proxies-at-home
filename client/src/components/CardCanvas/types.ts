@@ -4,7 +4,7 @@
  * Types for the CardCanvas component and its rendering parameters.
  */
 
-import type { DarkenMode } from '../../store/settings';
+import { DarkenMode } from '../../../../shared/types';
 
 /**
  * Render parameters for CardCanvas.
@@ -231,10 +231,10 @@ export interface CardCanvasProps {
  */
 export function darkenModeToInt(mode: DarkenMode): number {
     switch (mode) {
-        case 'none': return 0;
-        case 'darken-all': return 1;
-        case 'contrast-edges': return 2;
-        case 'contrast-full': return 3;
+        case DarkenMode.None: return 0;
+        case DarkenMode.DarkenAll: return 1;
+        case DarkenMode.ContrastEdges: return 2;
+        case DarkenMode.ContrastFull: return 3;
         default: return 0;
     }
 }

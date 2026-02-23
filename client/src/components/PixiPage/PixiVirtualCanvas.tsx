@@ -29,6 +29,7 @@ import {
 import type { CardOption } from '../../../../shared/types';
 import type { DarkenMode } from '../../store/settings';
 import { useSettingsStore } from '../../store/settings';
+import { getEffectiveGlobalDarkenMode } from '../../helpers/imageSourceUtils';
 
 // --- Types ---
 
@@ -38,8 +39,9 @@ export interface CardWithGlobalLayout {
     backBlob?: Blob;
     frontImageId?: string; // For artwork change detection
     backImageId?: string;
-    backOverrides?: CardOption['overrides']; // Back card's overrides for per-face rendering
+    backOverrides?: CardOption['overrides'];
     darknessFactor: number;
+    imageSource?: import('../../db').ImageSource;
     // Position in pixels relative to page content origin (before zoom)
     globalX: number;
     globalY: number;
@@ -129,6 +131,9 @@ function PixiVirtualCanvasInner({
     const globalDarkenAmount = useSettingsStore((s) => s.darkenAmount);
     const globalDarkenBrightness = useSettingsStore((s) => s.darkenBrightness);
     const globalDarkenAutoDetect = useSettingsStore((s) => s.darkenAutoDetect);
+    const darkenApplyToScryfall = useSettingsStore((s) => s.darkenApplyToScryfall);
+    const darkenApplyToMpc = useSettingsStore((s) => s.darkenApplyToMpc);
+    const darkenApplyToUploads = useSettingsStore((s) => s.darkenApplyToUploads);
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const appRef = useRef<Application | null>(null);
@@ -641,7 +646,7 @@ function PixiVirtualCanvasInner({
                 // Check if stale before processing each card
                 if (isStale()) return;
 
-                const { card, imageBlob, backBlob, frontImageId, backImageId, backOverrides, darknessFactor, globalX, globalY, width, height } = cards[i];
+                const { card, imageBlob, backBlob, frontImageId, backImageId, backOverrides, darknessFactor, imageSource, globalX, globalY, width, height } = cards[i];
                 const uuid = card.uuid;
 
                 // Check if card is visible OR should be pre-initialized
@@ -779,12 +784,22 @@ function PixiVirtualCanvasInner({
                 // Use back overrides when flipped, front overrides otherwise
                 const overrides = isFlipped ? (backOverrides ?? card.overrides) : card.overrides;
 
+                // Calculate effective global darken mode for this specific card
+                const currentSource = imageSource ?? null;
+                const effectiveGlobalDarkenMode = getEffectiveGlobalDarkenMode(
+                    globalDarkenMode,
+                    currentSource,
+                    darkenApplyToScryfall,
+                    darkenApplyToMpc,
+                    darkenApplyToUploads
+                );
+
                 // Darken filter always uses the standard screen layout dimensions
                 const standardTextureSize: [number, number] = [width, height];
 
                 // Apply darken filter
                 applyDarkenFilter(darkenFilter, overrides, {
-                    darkenMode: globalDarkenMode,
+                    darkenMode: effectiveGlobalDarkenMode,
                     darkenContrast: globalDarkenContrast,
                     darkenEdgeWidth: globalDarkenEdgeWidth,
                     darkenAmount: globalDarkenAmount,
@@ -828,7 +843,8 @@ function PixiVirtualCanvasInner({
                 }
 
                 // Build filter array based on what's needed
-                const effectiveMode = overrides?.darkenMode ?? globalDarkenMode;
+                const useGlobal = overrides?.darkenUseGlobalSettings ?? true;
+                const effectiveMode = useGlobal ? effectiveGlobalDarkenMode : (overrides?.darkenMode ?? effectiveGlobalDarkenMode);
                 const filters: import('pixi.js').Filter[] = [];
 
                 if (effectiveMode !== 'none') {
@@ -888,6 +904,9 @@ function PixiVirtualCanvasInner({
         globalDarkenAmount,
         globalDarkenBrightness,
         globalDarkenAutoDetect,
+        darkenApplyToScryfall,
+        darkenApplyToMpc,
+        darkenApplyToUploads,
         flippedCards,
         createTexture,
         onRenderedCardsChange,

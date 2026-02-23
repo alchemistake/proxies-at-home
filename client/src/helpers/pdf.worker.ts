@@ -3,7 +3,9 @@ import {
     trimBleedFromBitmap,
     trimBleedByMm,
 } from "./imageProcessing";
-import { generateBleedCanvasWebGL, processExistingBleedWebGL } from "./webglImageProcessing";
+import { generateBleedCanvasWebGL, processExistingBleedWebGL, renderBleedCanvasDirect } from "./webglImageProcessing";
+import { getEffectiveGlobalDarkenMode } from "./imageSourceUtils";
+import { DarkenMode } from "../../../shared/types";
 import { darkenModeToInt } from "../components/CardCanvas/types";
 import { getCardTargetBleed, computeCardLayouts, computeGridDimensions } from "./layout";
 import { getEffectiveBleedMode, getEffectiveExistingBleedMm } from "./imageSpecs";
@@ -13,6 +15,7 @@ import { db, type EffectCacheEntry } from "../db";
 import type { CardOption, CardOverrides } from "../../../shared/types";
 import { debugLog } from "./debug";
 import { IN_TO_PX, MM_TO_PX } from "@/constants/commonConstants";
+import type { WorkerSuccessResponse } from "./imageProcessor";
 
 export { };
 declare const self: DedicatedWorkerGlobalScope;
@@ -584,7 +587,7 @@ self.onmessage = async (event: MessageEvent) => {
         };
 
         // PHASE 1: Prepare cards with LIMITED CONCURRENCY to avoid memory exhaustion
-        debugLog(`[PDF Worker] Processing ${pageCards.length} cards with concurrency limit ${MAX_CONCURRENT_CARDS}`);
+        debugLog(`[PDF Worker] Processing ${pageCards.length} cards with concurrency limit ${MAX_CONCURRENT_CARDS} `);
         const preparedCards = await processWithConcurrency(pageCards, async (card: CardOption, idx: number): Promise<PreparedCard> => {
             const col = idx % columns;
             const row = Math.floor(idx / columns);
@@ -634,7 +637,26 @@ self.onmessage = async (event: MessageEvent) => {
             // Determine effective mode and settings
             const useGlobalSettings = card.overrides?.darkenUseGlobalSettings ?? true;
             const cardDarkenMode = card.overrides?.darkenMode;
-            const effectiveDarkenMode = cardDarkenMode ?? (darkenMode ?? 'none');
+
+            const effectiveGlobalDarkenMode = getEffectiveGlobalDarkenMode(
+                darkenMode ?? DarkenMode.None,
+                imageInfo?.source ?? null,
+                settings.darkenApplyToScryfall ?? true,
+                settings.darkenApplyToMpc ?? false,
+                settings.darkenApplyToUploads ?? false
+            );
+
+            const effectiveDarkenMode = (useGlobalSettings ? effectiveGlobalDarkenMode : cardDarkenMode) ?? effectiveGlobalDarkenMode;
+
+            // Helper to get the correct generated blob based on the requested darken mode
+            const extractDarkenedBlob = (result: Partial<WorkerSuccessResponse>, mode: string): Blob | undefined => {
+                switch (mode) {
+                    case DarkenMode.DarkenAll: return result.exportBlobDarkenAll ?? result.exportBlob;
+                    case DarkenMode.ContrastEdges: return result.exportBlobContrastEdges ?? result.exportBlob;
+                    case DarkenMode.ContrastFull: return result.exportBlobContrastFull ?? result.exportBlob;
+                    default: return result.exportBlob;
+                }
+            };
 
             // Resolve darken parameters with fallback to global settings
             const resolveParam = (cardVal: number | undefined, globalVal: number) =>
@@ -645,7 +667,7 @@ self.onmessage = async (event: MessageEvent) => {
                 : (darkenAutoDetect ?? true);
 
             // Force contrast/brightness values for Auto Detect modes
-            const isAutoContrast = r_darkenAutoDetect && (effectiveDarkenMode === 'contrast-edges' || effectiveDarkenMode === 'contrast-full');
+            const isAutoContrast = r_darkenAutoDetect && (effectiveDarkenMode === DarkenMode.ContrastEdges || effectiveDarkenMode === DarkenMode.ContrastFull);
 
             const darkenOpts = {
                 darkenThreshold: resolveParam(card.overrides?.darkenThreshold, darkenThreshold ?? 30),
@@ -656,20 +678,34 @@ self.onmessage = async (event: MessageEvent) => {
                 darkenAutoDetect: r_darkenAutoDetect
             };
 
+            const needsCustomDarken = effectiveDarkenMode !== DarkenMode.None && (
+                darkenOpts.darkenThreshold !== 30 ||
+                darkenOpts.darkenContrast !== 2.0 ||
+                darkenOpts.darkenEdgeWidth !== 0.1 ||
+                darkenOpts.darkenAmount !== 1.0 ||
+                darkenOpts.darkenBrightness !== -50
+            );
+
             // Select correct cached blob based on darken mode
             let selectedExportBlob: Blob | undefined;
-            switch (effectiveDarkenMode) {
-                case 'darken-all':
-                    selectedExportBlob = imageInfo?.exportBlobDarkenAll;
-                    break;
-                case 'contrast-edges':
-                    selectedExportBlob = imageInfo?.exportBlobContrastEdges;
-                    break;
-                case 'contrast-full':
-                    selectedExportBlob = imageInfo?.exportBlobContrastFull;
-                    break;
-                default:
-                    selectedExportBlob = imageInfo?.exportBlob;
+            if (needsCustomDarken) {
+                // If custom darken settings are used, we must start from the base undisplayed blob
+                // because the pre-rendered mode blobs have default settings baked in.
+                selectedExportBlob = imageInfo?.exportBlob;
+            } else {
+                switch (effectiveDarkenMode) {
+                    case DarkenMode.DarkenAll:
+                        selectedExportBlob = imageInfo?.exportBlobDarkenAll;
+                        break;
+                    case DarkenMode.ContrastEdges:
+                        selectedExportBlob = imageInfo?.exportBlobContrastEdges;
+                        break;
+                    case DarkenMode.ContrastFull:
+                        selectedExportBlob = imageInfo?.exportBlobContrastFull;
+                        break;
+                    default:
+                        selectedExportBlob = imageInfo?.exportBlob;
+                }
             }
 
             // Compute bleed mode and amounts
@@ -700,14 +736,26 @@ self.onmessage = async (event: MessageEvent) => {
             // Log first card and all cards in first row to check for accumulating errors
             // Cache key for canvas caching (declare here so it's accessible in both paths and after trimming)
             // INCLUDE DPI IN KEY: Reusing a 900 DPI canvas for 1200 DPI export results in pixelation/upscaling
-            const cacheKey = card.imageId ? `${card.imageId}-${targetBleedMm.toFixed(2)}-${effectiveDarkenMode}-${DPI}` : null;
+            const customDarkenKey = needsCustomDarken ? `-${darkenOpts.darkenThreshold}-${darkenOpts.darkenContrast}-${darkenOpts.darkenEdgeWidth}-${darkenOpts.darkenAmount}-${darkenOpts.darkenBrightness}` : '';
+            const cacheKey = card.imageId ? `${card.imageId}-${targetBleedMm.toFixed(2)}-${effectiveDarkenMode}${customDarkenKey}-${DPI}` : null;
             let fromCanvasCache = false; // Track if we retrieved from canvas cache (to avoid re-caching)
 
             if (isCacheValid) {
                 // Fast path: use pre-processed blob directly
-                debugLog(`[PDF Worker] Card ${idx}: Using cached blob, size=${selectedExportBlob!.size}`);
+                debugLog(`[PDF Worker] Card ${idx}: Using cached blob, size = ${selectedExportBlob!.size} `);
                 let bitmap = await createImageBitmap(selectedExportBlob!);
-                debugLog(`[PDF Worker] Card ${idx}: Created bitmap ${bitmap.width}x${bitmap.height}`);
+                debugLog(`[PDF Worker] Card ${idx}: Created bitmap ${bitmap.width}x${bitmap.height} `);
+
+                if (needsCustomDarken) {
+                    debugLog(`[PDF Worker] Card ${idx}: Applying custom darken settings`);
+                    const darkenCanvas = await renderBleedCanvasDirect(bitmap, bitmap.width, bitmap.height, {
+                        darkenMode: darkenModeToInt(effectiveDarkenMode),
+                        ...darkenOpts,
+                        mimeType: 'image/png'
+                    });
+                    bitmap.close();
+                    bitmap = await createImageBitmap(darkenCanvas);
+                }
 
                 // If card has advanced overrides (brightness, contrast, etc.), apply them with WebGL
                 if (hasAdvancedOverrides(card.overrides)) {
@@ -720,7 +768,7 @@ self.onmessage = async (event: MessageEvent) => {
                         bitmap = await createImageBitmap(cachedEffectBlob);
                     } else {
                         debugLog(`[PDF Worker] Card ${idx}: Applying WebGL overrides`);
-                        const params = overridesToRenderParams(card.overrides!, effectiveDarkenMode as 'none' | 'darken-all' | 'contrast-edges' | 'contrast-full');
+                        const params = overridesToRenderParams(card.overrides!, effectiveDarkenMode as DarkenMode);
                         params.dpi = DPI;
                         const renderedBlob = await renderCardWithOverridesWorker(bitmap, params);
                         bitmap.close();
@@ -739,7 +787,7 @@ self.onmessage = async (event: MessageEvent) => {
                 // so we need to infer the actual bleed from the bitmap size, not from settings
                 const actualImageBleedPx = (bitmap.width - contentWidthInPx) / 2;
                 if (actualImageBleedPx !== imageBleedPx) {
-                    debugLog(`[PDF Worker] Card ${idx}: Cached blob bleed mismatch! Expected ${imageBleedPx}px, got ${actualImageBleedPx}px`);
+                    debugLog(`[PDF Worker] Card ${idx}: Cached blob bleed mismatch! Expected ${imageBleedPx} px, got ${actualImageBleedPx} px`);
                     // Override imageBleedPx with actual value to ensure correct trimming
                     imageBleedPx = actualImageBleedPx;
                     imageCardWidthPx = bitmap.width;
@@ -769,12 +817,12 @@ self.onmessage = async (event: MessageEvent) => {
                             const cardBleedPx = cardLayout.bleedPx;
                             const cardWidthWithBleed = contentWidthInPx + 2 * cardBleedPx;
                             const cardHeightWithBleed = contentHeightInPx + 2 * cardBleedPx;
-                            debugLog(`[PDF Worker] Card ${idx}: Blank canvas dimensions: ${cardWidthWithBleed}x${cardHeightWithBleed}`);
+                            debugLog(`[PDF Worker] Card ${idx}: Blank canvas dimensions: ${cardWidthWithBleed}x${cardHeightWithBleed} `);
                             const blankCanvas = new OffscreenCanvas(cardWidthWithBleed, cardHeightWithBleed);
                             debugLog(`[PDF Worker] Card ${idx}: Getting 2d context...`);
                             const cardCtx = blankCanvas.getContext('2d');
                             if (!cardCtx) {
-                                throw new Error(`Failed to get 2d context for blank canvas ${cardWidthWithBleed}x${cardHeightWithBleed}`);
+                                throw new Error(`Failed to get 2d context for blank canvas ${cardWidthWithBleed}x${cardHeightWithBleed} `);
                             }
                             debugLog(`[PDF Worker] Card ${idx}: Got 2d context, filling white`);
                             cardCtx.fillStyle = 'white';
@@ -783,7 +831,7 @@ self.onmessage = async (event: MessageEvent) => {
                             debugLog(`[PDF Worker] Card ${idx}: Blank canvas complete`);
                         } else if (!src) {
                             // Placeholder for missing images
-                            debugLog(`[PDF Worker] Card ${idx}: Creating placeholder (no source)`);
+                            debugLog(`[PDF Worker] Card ${idx}: Creating placeholder(no source)`);
                             const cardBleedPx = cardLayout.bleedPx;
                             const cardWidthWithBleed = contentWidthInPx + 2 * cardBleedPx;
                             const cardHeightWithBleed = contentHeightInPx + 2 * cardBleedPx;
@@ -839,10 +887,12 @@ self.onmessage = async (event: MessageEvent) => {
                                     unit: 'mm',
                                     exportDpi: DPI,
                                     displayDpi: DPI,
-                                    darkenMode: darkenModeToInt(effectiveDarkenMode as 'none' | 'darken-all' | 'contrast-edges' | 'contrast-full'),
+                                    darkenMode: darkenModeToInt(effectiveDarkenMode),
                                     ...darkenOpts,
                                 });
-                                finalCardCanvas = await createImageBitmap(result.exportBlob);
+                                const finalBlob = extractDarkenedBlob(result, effectiveDarkenMode) ?? result.exportBlob;
+                                if (!finalBlob) throw new Error("Missing exportBlob from processExistingBleedWebGL");
+                                finalCardCanvas = await createImageBitmap(finalBlob);
                             } else {
                                 // If generating new bleed (e.g. extending existing bleed), pass inputBleed info
                                 // so we don't distort the content. We do NOT trim it anymore.
@@ -867,7 +917,7 @@ self.onmessage = async (event: MessageEvent) => {
                                     workingBitmap = finalCardCanvas;
                                 }
 
-                                const params = overridesToRenderParams(card.overrides!, effectiveDarkenMode as 'none' | 'darken-all' | 'contrast-edges' | 'contrast-full');
+                                const params = overridesToRenderParams(card.overrides!, effectiveDarkenMode as DarkenMode);
                                 params.dpi = DPI;
                                 const renderedBlob = await renderCardWithOverridesWorker(workingBitmap, params);
 

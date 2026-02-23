@@ -41,7 +41,7 @@ export async function convertScryfallToCardOptions(
         // The image entry is created once, and each card's back card links to it.
         // createLinkedBackCardsBulk handles ref counting when linking individual back cards.
         if (backFace.imageUrl) {
-            backImageId = await addRemoteImage([backFace.imageUrl], 1);
+            backImageId = await addRemoteImage([backFace.imageUrl], 1, 'scryfall');
         }
     }
 
@@ -49,10 +49,10 @@ export async function convertScryfallToCardOptions(
     let mainImageId: string | undefined;
     if (isBackFaceImport && frontImageUrl) {
         // User imported back face name - fetch front face art for the card (but we will flip it)
-        mainImageId = await addRemoteImage([frontImageUrl], quantity, card.prints);
+        mainImageId = await addRemoteImage([frontImageUrl], quantity, 'scryfall', card.prints);
     } else {
         // Normal case
-        mainImageId = await addRemoteImage(card.imageUrls ?? [], quantity, card.prints);
+        mainImageId = await addRemoteImage(card.imageUrls ?? [], quantity, 'scryfall', card.prints);
     }
 
     // Token Detection

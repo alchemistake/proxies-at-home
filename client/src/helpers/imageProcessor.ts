@@ -22,7 +22,7 @@ interface WorkerMessage {
   darkenMode?: number;  // 0=none, 1=darken-all, 2=contrast-edges, 3=contrast-full
 }
 
-interface WorkerSuccessResponse {
+export interface WorkerSuccessResponse {
   uuid: string;
   exportBlob: Blob;
   exportDpi: number;

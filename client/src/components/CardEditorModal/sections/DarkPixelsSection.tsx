@@ -9,6 +9,7 @@ import { StyledSlider } from '../../common/StyledSlider';
 import type { SectionProps } from './index';
 
 import { DEFAULT_RENDER_PARAMS } from '../../CardCanvas';
+import { DarkenMode } from '../../../../../shared/types';
 
 export const DarkPixelsSection = memo(function DarkPixelsSection({
     params,
@@ -17,7 +18,7 @@ export const DarkPixelsSection = memo(function DarkPixelsSection({
 }: SectionProps) {
     // Use the explicit flag - true means use global defaults
     const isUsingGlobalSettings = params.darkenUseGlobalSettings;
-    const showContrastMode = params.darkenMode === 'contrast-edges' || params.darkenMode === 'contrast-full';
+    const showContrastMode = params.darkenMode === DarkenMode.ContrastEdges || params.darkenMode === DarkenMode.ContrastFull;
 
     const handleUseGlobalSettings = (checked: boolean) => {
         // Just toggle the flag - don't change any slider values
@@ -42,17 +43,17 @@ export const DarkPixelsSection = memo(function DarkPixelsSection({
                 <Select
                     sizing="sm"
                     value={params.darkenMode}
-                    onChange={(e) => updateParam('darkenMode', e.target.value as 'none' | 'darken-all' | 'contrast-edges' | 'contrast-full')}
+                    onChange={(e) => updateParam('darkenMode', e.target.value as DarkenMode)}
                     disabled={isUsingGlobalSettings}
                 >
-                    <option value="none">None</option>
-                    <option value="darken-all">Darken All (threshold)</option>
-                    <option value="contrast-edges">Contrast Edges</option>
-                    <option value="contrast-full">Contrast Full</option>
+                    <option value={DarkenMode.None}>None</option>
+                    <option value={DarkenMode.DarkenAll}>Darken All (threshold)</option>
+                    <option value={DarkenMode.ContrastEdges}>Contrast Edges</option>
+                    <option value={DarkenMode.ContrastFull}>Contrast Full</option>
                 </Select>
             </div>
 
-            {params.darkenMode !== 'none' && (
+            {params.darkenMode !== DarkenMode.None && (
                 <div className={`flex flex-col gap-3 ${isUsingGlobalSettings ? 'opacity-50 pointer-events-none' : ''}`}>
                     <StyledSlider
                         label="Amount"
@@ -65,19 +66,21 @@ export const DarkPixelsSection = memo(function DarkPixelsSection({
                         displayMultiplier={100}
                         defaultValue={defaultParams.darkenAmount}
                     />
-                    <StyledSlider
-                        label="Edge Width"
-                        value={params.darkenEdgeWidth}
-                        onChange={(v) => updateParam('darkenEdgeWidth', v)}
-                        min={0}
-                        max={1}
-                        step={0.01}
-                        displayValue={`${(params.darkenEdgeWidth * 100).toFixed(0)}%`}
-                        displayMultiplier={100}
-                        defaultValue={DEFAULT_RENDER_PARAMS.darkenEdgeWidth}
-                    />
+                    {params.darkenMode !== DarkenMode.ContrastFull && (
+                        <StyledSlider
+                            label="Edge Width"
+                            value={params.darkenEdgeWidth}
+                            onChange={(v) => updateParam('darkenEdgeWidth', v)}
+                            min={0}
+                            max={1}
+                            step={0.01}
+                            displayValue={`${(params.darkenEdgeWidth * 100).toFixed(0)}%`}
+                            displayMultiplier={100}
+                            defaultValue={DEFAULT_RENDER_PARAMS.darkenEdgeWidth}
+                        />
+                    )}
 
-                    {params.darkenMode === 'darken-all' && (
+                    {params.darkenMode === DarkenMode.DarkenAll && (
                         <StyledSlider
                             label="Threshold"
                             value={params.darkenThreshold}
@@ -104,10 +107,10 @@ export const DarkPixelsSection = memo(function DarkPixelsSection({
                     )}
 
                     {/* Contrast/Brightness sliders - hidden when Auto Detect is checked (for contrast modes) */}
-                    {(!showContrastMode || !params.darkenAutoDetect) && (
+                    {showContrastMode && !params.darkenAutoDetect && (
                         <>
                             <StyledSlider
-                                label={params.darkenMode === 'contrast-edges' ? 'Edge Contrast' : 'Contrast'}
+                                label={params.darkenMode === DarkenMode.ContrastEdges ? 'Edge Contrast' : 'Contrast'}
                                 value={params.darkenContrast}
                                 onChange={(v) => updateParam('darkenContrast', v)}
                                 min={0.5}
@@ -118,7 +121,7 @@ export const DarkPixelsSection = memo(function DarkPixelsSection({
                                 defaultValue={defaultParams.darkenContrast}
                             />
                             <StyledSlider
-                                label={params.darkenMode === 'contrast-edges' ? 'Edge Brightness' : 'Brightness'}
+                                label={params.darkenMode === DarkenMode.ContrastEdges ? 'Edge Brightness' : 'Brightness'}
                                 value={params.darkenBrightness}
                                 onChange={(v) => updateParam('darkenBrightness', v)}
                                 min={-100}

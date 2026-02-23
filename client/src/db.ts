@@ -3,7 +3,14 @@ import type { CardOption, PrintInfo } from '@/types';
 import { generateUUID } from './helpers/uuid';
 
 // Image source types for explicit tracking
-export type ImageSource = 'mpc' | 'scryfall' | 'upload-library' | 'cardback';
+export const ImageSource = {
+  MPC: 'mpc',
+  Scryfall: 'scryfall',
+  UploadLibrary: 'upload-library',
+  Cardback: 'cardback'
+} as const;
+
+export type ImageSource = typeof ImageSource[keyof typeof ImageSource];
 
 // Define a type for the image data to be stored
 export interface Image {
@@ -490,7 +497,7 @@ class ProxxiedDexie extends Dexie {
       // Migrate 'custom' source to 'upload-library' in images table
       await tx.table('images')
         .filter(img => img.source === 'custom')
-        .modify({ source: 'upload-library' });
+        .modify({ source: ImageSource.UploadLibrary });
     });
   }
 }

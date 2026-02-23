@@ -90,7 +90,7 @@ describe('dbUtils', () => {
             const url = 'https://cards.scryfall.io/large/front/1/2/12345.jpg';
             const { addRemoteImage } = await import('./dbUtils');
 
-            const id1 = await addRemoteImage([url], undefined);
+            const id1 = await addRemoteImage([url], undefined, 'scryfall');
             expect(id1).toBeDefined();
             if (!id1) return;
 
@@ -99,7 +99,7 @@ describe('dbUtils', () => {
             expect(img1?.refCount).toBe(1);
 
             // Add same URL again
-            const id2 = await addRemoteImage([url], undefined);
+            const id2 = await addRemoteImage([url], undefined, 'scryfall');
             expect(id2).toBe(id1);
             const img2 = await db.images.get(id1);
             expect(img2?.refCount).toBe(2);
@@ -110,7 +110,7 @@ describe('dbUtils', () => {
             const { addRemoteImage } = await import('./dbUtils');
 
             // Simulate adding 3 copies at once
-            const id = await addRemoteImage([url], 3);
+            const id = await addRemoteImage([url], 3, 'scryfall');
             expect(id).toBeDefined();
             if (!id) return;
 
@@ -311,7 +311,7 @@ describe('dbUtils', () => {
 
     it('addRemoteImage should return undefined for empty list', async () => {
         const { addRemoteImage } = await import('./dbUtils');
-        const result = await addRemoteImage([], undefined);
+        const result = await addRemoteImage([], undefined, 'scryfall');
         expect(result).toBeUndefined();
     });
 

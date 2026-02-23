@@ -1,10 +1,10 @@
 import { db, type Image } from "@/db";
+import { ImageSource } from "../db";
 import type { CardOption, CardOverrides } from "../../../shared/types";
 import { parseImageIdFromUrl } from "./imageHelper";
 import { isCardbackId } from "./cardbackLibrary";
 import { generateUUID } from "./uuid";
 import { extractMpcIdentifierFromImageId, getMpcAutofillImageUrl } from "./mpcAutofillApi";
-import { inferSourceFromUrl, getImageSourceSync, isUploadLibrarySource } from "./imageSourceUtils";
 import { detectBleed } from "./cardDimensions";
 
 /**
@@ -87,6 +87,7 @@ export async function addUploadLibraryImage(
 export async function addRemoteImage(
   imageUrls: string[],
   count: number = 1,
+  source: import("../db").ImageSource,
   prints?: Array<{ imageUrl: string; set: string; number: string; rarity?: string; faceName?: string }>
 ): Promise<string | undefined> {
   if (!imageUrls || imageUrls.length === 0) return undefined;
@@ -112,7 +113,7 @@ export async function addRemoteImage(
         imageUrls: imageUrls,
         prints: prints,
         refCount: count,
-        source: inferSourceFromUrl(imageUrls[0]) ?? undefined,
+        source: source,
       });
     }
   });
@@ -131,6 +132,7 @@ export async function addRemoteImages(
     imageUrls: string[];
     count?: number;
     prints?: Array<{ imageUrl: string; set: string; number: string; rarity?: string; faceName?: string }>;
+    source?: import("../db").ImageSource;
   }>
 ): Promise<Map<string, string>> {
   const result = new Map<string, string>();
@@ -142,6 +144,7 @@ export async function addRemoteImages(
     urls: string[];
     count: number;
     prints?: Image['prints'];
+    source?: import("../db").ImageSource;
   }>();
 
   for (const img of images) {
@@ -150,58 +153,65 @@ export async function addRemoteImages(
     // Use consistent ID generation logic
     const firstUrl = img.imageUrls[0];
     const imageId = parseImageIdFromUrl(firstUrl);
-
     result.set(firstUrl, imageId);
 
-    const check = inputsById.get(imageId);
-    if (check) {
-      check.count += (img.count || 1);
+    const existing = inputsById.get(imageId);
+    if (existing) {
+      existing.count += (img.count ?? 1);
+      if (img.prints && !existing.prints) {
+        existing.prints = img.prints;
+      }
     } else {
       inputsById.set(imageId, {
         id: imageId,
         urls: img.imageUrls,
-        count: img.count || 1,
+        count: img.count ?? 1,
         prints: img.prints,
+        source: img.source,
       });
     }
   }
 
-  // 2. Perform bulk DB operation
-  await db.transaction("rw", db.images, async () => {
-    const ids = Array.from(inputsById.keys());
-    const existingImages = await db.images.bulkGet(ids);
+  // 2. Fetch existing images in one batch
+  const imageIds = Array.from(inputsById.keys());
+  const existingImages = await db.images.bulkGet(imageIds);
 
-    const updates: Image[] = [];
+  // 3. Separate into updates and inserts
+  const updates: { key: string; changes: Partial<Image> }[] = [];
+  const inserts: Image[] = [];
 
-    // Existing: index matches ids index
-    ids.forEach((id, index) => {
-      const input = inputsById.get(id)!;
-      const existing = existingImages[index];
+  for (let i = 0; i < imageIds.length; i++) {
+    const id = imageIds[i];
+    const input = inputsById.get(id)!;
+    const existing = existingImages[i];
 
-      if (existing) {
-        // Update refCount, preserving all other fields (blobs, etc.)
-        const update = {
-          ...existing,
-          refCount: existing.refCount + input.count,
-          // Only update prints if new input has them and existing doesn't
-          prints: (input.prints && !existing.prints) ? input.prints : existing.prints,
-        };
-        updates.push(update);
-      } else {
-        // New Image
-        updates.push({
-          id: id,
-          sourceUrl: input.urls[0],
-          imageUrls: input.urls,
-          prints: input.prints,
-          refCount: input.count,
-          source: inferSourceFromUrl(input.urls[0]) ?? undefined,
-        });
+    if (existing) {
+      const changes: Partial<Image> = {
+        refCount: existing.refCount + input.count,
+      };
+      if (input.prints && !existing.prints) {
+        changes.prints = input.prints;
       }
-    });
+      updates.push({ key: id, changes });
+    } else {
+      inserts.push({
+        id,
+        sourceUrl: input.urls[0],
+        imageUrls: input.urls,
+        refCount: input.count,
+        prints: input.prints,
+        source: input.source,
+      });
+    }
+  }
 
+  // 4. Perform bulk DB operations
+  await db.transaction("rw", db.images, async () => {
+    if (inserts.length > 0) {
+      await db.images.bulkAdd(inserts);
+    }
     if (updates.length > 0) {
-      await db.images.bulkPut(updates);
+      await db.images.bulkUpdate(updates);
     }
   });
 
@@ -744,7 +754,8 @@ export async function changeCardArtwork(
   newImageUrls?: string[],
   cardMetadata?: Partial<Pick<CardOption, 'set' | 'number' | 'colors' | 'cmc' | 'type_line' | 'rarity' | 'mana_cost' | 'lang' | 'token_parts' | 'needs_token' | 'isToken'>>,
   hasBuiltInBleed?: boolean,
-  overrides?: Partial<CardOption['overrides']>
+  overrides?: Partial<CardOption['overrides']>,
+  newImageSource?: import("../db").ImageSource
 ): Promise<void> {
   await db.transaction("rw", db.cards, db.images, db.cardbacks, db.user_images, async () => {
     if (oldImageId === newImageId && !newName && !newImageUrls && !cardMetadata) {
@@ -769,14 +780,11 @@ export async function changeCardArtwork(
       }
     }
 
-    // 2. Determine if new image is upload-library (explicitly 'upload-library' source)
+    // Determine if new image is custom upload by looking at existing user image with same ID
     let newImageIsUploadLibrary = false;
-    if (isCardbackId(newImageId)) {
-      const cardback = await db.cardbacks.get(newImageId);
-      newImageIsUploadLibrary = cardback ? !!cardback.originalBlob : false;
-    } else {
-      const newImage = await db.images.get(newImageId);
-      newImageIsUploadLibrary = isUploadLibrarySource(getImageSourceSync(newImageId, newImage?.source));
+    if (newImageId) {
+      const userImg = await db.user_images.get(newImageId);
+      if (userImg) newImageIsUploadLibrary = true;
     }
 
     const changes: Partial<CardOption> = {
@@ -855,7 +863,7 @@ export async function changeCardArtwork(
             sourceUrl: sourceUrl,
             imageUrls: imageUrls,
             refCount: cardsToUpdate.length,
-            source: isMpcImage ? 'mpc' : (inferSourceFromUrl(sourceUrl) ?? undefined),
+            source: newImageSource !== undefined ? newImageSource : (isMpcImage ? ImageSource.MPC : undefined),
           });
         }
       }

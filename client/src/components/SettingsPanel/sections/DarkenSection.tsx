@@ -21,6 +21,12 @@ export function DarkenSection() {
     const setDarkenBrightness = useSettingsStore((state) => state.setDarkenBrightness);
     const darkenAutoDetect = useSettingsStore((state) => state.darkenAutoDetect);
     const setDarkenAutoDetect = useSettingsStore((state) => state.setDarkenAutoDetect);
+    const darkenApplyToScryfall = useSettingsStore((state) => state.darkenApplyToScryfall);
+    const setDarkenApplyToScryfall = useSettingsStore((state) => state.setDarkenApplyToScryfall);
+    const darkenApplyToMpc = useSettingsStore((state) => state.darkenApplyToMpc);
+    const setDarkenApplyToMpc = useSettingsStore((state) => state.setDarkenApplyToMpc);
+    const darkenApplyToUploads = useSettingsStore((state) => state.darkenApplyToUploads);
+    const setDarkenApplyToUploads = useSettingsStore((state) => state.setDarkenApplyToUploads);
 
     const showContrastMode = darkenMode === 'contrast-edges' || darkenMode === 'contrast-full';
 
@@ -38,6 +44,40 @@ export function DarkenSection() {
                     <option value="contrast-edges">Contrast Edges</option>
                     <option value="contrast-full">Contrast Full</option>
                 </Select>
+            </div>
+
+            <div className="flex flex-col gap-2 mb-2">
+                <span className="text-sm font-medium text-gray-900 dark:text-white mt-1">Apply To</span>
+                <div className="flex items-center gap-2">
+                    <Checkbox
+                        id="darken-target-scryfall"
+                        checked={darkenApplyToScryfall}
+                        onChange={(e) => setDarkenApplyToScryfall(e.target.checked)}
+                    />
+                    <Label htmlFor="darken-target-scryfall" className="cursor-pointer text-xs">
+                        Scryfall
+                    </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Checkbox
+                        id="darken-target-mpc"
+                        checked={darkenApplyToMpc}
+                        onChange={(e) => setDarkenApplyToMpc(e.target.checked)}
+                    />
+                    <Label htmlFor="darken-target-mpc" className="cursor-pointer text-xs">
+                        MPC Autofill
+                    </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Checkbox
+                        id="darken-target-uploads"
+                        checked={darkenApplyToUploads}
+                        onChange={(e) => setDarkenApplyToUploads(e.target.checked)}
+                    />
+                    <Label htmlFor="darken-target-uploads" className="cursor-pointer text-xs">
+                        User Uploads
+                    </Label>
+                </div>
             </div>
 
             {/* Darken settings sliders - shown when mode is not 'none' */}

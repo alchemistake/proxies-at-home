@@ -1,6 +1,5 @@
 import type { CardOption } from "../../../shared/types";
 import { extractMpcIdentifierFromImageId } from "./mpcAutofillApi";
-import { inferImageSource } from "./imageSourceUtils";
 
 /**
  * Builds an MPC Autofill-compatible XML from cards.
@@ -13,9 +12,7 @@ export function buildMpcXml(cards: CardOption[], defaultCardbackId?: string): st
 
     const mpcFronts = frontCards
         .map((c, index) => {
-            // Only extract MPC ID if the source is actually 'mpc' (prevents false positives)
-            const source = inferImageSource(c.imageId);
-            const identifier = source === 'mpc' ? extractMpcIdentifierFromImageId(c.imageId) : null;
+            const identifier = extractMpcIdentifierFromImageId(c.imageId);
             return { card: c, index, identifier };
         })
         .filter(item => item.identifier);
@@ -55,9 +52,7 @@ export function buildMpcXml(cards: CardOption[], defaultCardbackId?: string): st
         if (card.linkedBackId) {
             const backCard = cardMap.get(card.linkedBackId);
             if (backCard) {
-                // Only extract MPC ID if the source is actually 'mpc'
-                const backSource = inferImageSource(backCard.imageId);
-                backIdentifier = backSource === 'mpc' ? extractMpcIdentifierFromImageId(backCard.imageId) : null;
+                backIdentifier = extractMpcIdentifierFromImageId(backCard.imageId);
 
                 if (backCard.name.includes(' // ')) {
                     backName = backCard.name.split(' // ')[1];

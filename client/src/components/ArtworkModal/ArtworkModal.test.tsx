@@ -928,7 +928,7 @@ describe('ArtworkModal', () => {
                     undefined,
                     expect.objectContaining({ set: 'abc', number: '1' }),
                     false, // hasBuiltInBleed
-                    { darkenMode: 'none', darkenUseGlobalSettings: false } // overrides
+                    undefined // overrides
                 );
             });
         });

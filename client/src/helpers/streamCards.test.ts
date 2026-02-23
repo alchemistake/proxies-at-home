@@ -37,6 +37,11 @@ vi.mock('@/db', () => ({
             toArray: vi.fn().mockResolvedValue([]), // Default to empty cardbacks
         },
     },
+    ImageSource: {
+        Scryfall: "scryfall",
+        MPC: "mpc",
+        UploadLibrary: "upload-library"
+    }
 }));
 
 // Mock Settings
@@ -88,7 +93,7 @@ describe('streamCards', () => {
 
         const result = await streamCards(options);
 
-        expect(addRemoteImage).toHaveBeenCalledWith(['http://mpc/mpc-123'], 1);
+        expect(addRemoteImage).toHaveBeenCalledWith(['http://mpc/mpc-123'], 1, 'mpc');
         expect(undoableAddCards).toHaveBeenCalledWith(
             expect.arrayContaining([
                 expect.objectContaining({ name: 'MPC Card', imageId: 'img-123' })
@@ -153,7 +158,7 @@ describe('streamCards', () => {
 
         const result = await streamCards(options);
 
-        expect(addRemoteImage).toHaveBeenCalledWith(['http://img'], 1, undefined);
+        expect(addRemoteImage).toHaveBeenCalledWith(['http://img'], 1, 'scryfall', undefined);
         expect(undoableAddCards).toHaveBeenCalled();
         expect(result.addedCardUuids).toContain('uuid-1');
     });
@@ -335,9 +340,9 @@ describe('streamCards', () => {
             await streamCards(options);
 
             // First call: back face art for linked back card
-            expect(addRemoteImage).toHaveBeenNthCalledWith(1, ['http://back-img'], 1);
+            expect(addRemoteImage).toHaveBeenNthCalledWith(1, ['http://back-img'], 1, 'scryfall');
             // Second call: front face art for the main card (since back face name was imported)
-            expect(addRemoteImage).toHaveBeenNthCalledWith(2, ['http://front-img'], 1, undefined);
+            expect(addRemoteImage).toHaveBeenNthCalledWith(2, ['http://front-img'], 1, 'scryfall', undefined);
             // Should have passed isFlipped: true
             expect(undoableAddCards).toHaveBeenCalledWith(
                 expect.arrayContaining([
@@ -472,7 +477,7 @@ describe('streamCards', () => {
             await streamCards(options);
 
             // Should add the direct URL without wrapping in MPC proxy
-            expect(addRemoteImage).toHaveBeenCalledWith(['https://scryfall.com/back.png'], 1);
+            expect(addRemoteImage).toHaveBeenCalledWith(['https://scryfall.com/back.png'], 1, 'mpc');
         });
 
         it('should use MPC proxy for backImageId if it is an MPC ID', async () => {
@@ -505,7 +510,7 @@ describe('streamCards', () => {
             await streamCards(options);
 
             // Should wrap in MPC proxy URL
-            expect(addRemoteImage).toHaveBeenCalledWith(['http://mpc/mpc-id-123'], 1);
+            expect(addRemoteImage).toHaveBeenCalledWith(['http://mpc/mpc-id-123'], 1, 'mpc');
         });
     });
 
@@ -545,7 +550,7 @@ describe('streamCards', () => {
             await streamCards(options);
 
             expect(addRemoteImage).toHaveBeenCalledWith(
-                ['https://custom-art.com/forest-alt.png'], 1
+                ['https://custom-art.com/forest-alt.png'], 1, 'mpc'
             );
             expect(undoableAddCards).toHaveBeenCalledWith(
                 expect.arrayContaining([

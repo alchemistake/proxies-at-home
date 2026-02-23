@@ -581,13 +581,11 @@ export function UploadLibraryGrid({
             _displayItem: UploadLibraryItem,
             e: React.MouseEvent
         ) => {
-            console.log(`[UploadLibraryGrid] handleTileClick: upload.hash=${upload.hash.substring(0, 8)}, upload.displayName=${upload.displayName}, mode=${mode}`);
             if (mode === "editor") {
                 if ((e.ctrlKey || e.metaKey || e.shiftKey) && onToggleSelect) {
                     onToggleSelect(upload.hash, e.shiftKey);
                 }
             } else if (onSelectItem) {
-                console.log(`[UploadLibraryGrid] handleTileClick: calling onSelectItem with upload.hash=${upload.hash.substring(0, 8)}, upload.displayName=${upload.displayName}`);
                 onSelectItem(upload);
             }
         },

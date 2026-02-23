@@ -18,6 +18,11 @@ vi.mock("../db", () => ({
       clear: vi.fn(),
     },
   },
+  ImageSource: {
+    Scryfall: "scryfall",
+    MPC: "mpc",
+    UploadLibrary: "upload-library"
+  },
 }));
 
 // Mock useProjectStore

@@ -1,6 +1,8 @@
 import { generateUUID } from "./uuid";
 
-export type ImportType = 'archidekt' | 'moxfield' | 'scryfall' | 'mpc' | 'unknown';
+import { ImageSource } from '../db';
+
+export type ImportType = 'archidekt' | 'moxfield' | typeof ImageSource.Scryfall | typeof ImageSource.MPC | 'unknown';
 
 export interface ImportSessionConfig {
     totalCards?: number;
@@ -178,8 +180,8 @@ export class ImportSession {
     private getImportTitle(): string {
         switch (this.config.importType) {
             case 'archidekt': return 'ARCHIDEKT IMPORT SUMMARY';
-            case 'scryfall': return 'DECK TEXT IMPORT SUMMARY';
-            case 'mpc': return 'MPC XML IMPORT SUMMARY';
+            case ImageSource.Scryfall: return 'DECK TEXT IMPORT SUMMARY';
+            case ImageSource.MPC: return 'MPC XML IMPORT SUMMARY';
             default: return 'IMPORT SUMMARY';
         }
     }

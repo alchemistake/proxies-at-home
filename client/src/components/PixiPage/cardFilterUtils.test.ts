@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-    destroySpriteData,
     applyDarkenFilter,
     applyAdjustmentFilter,
     calculateCardHoloAnimation,
+    destroySpriteData,
     type SpriteData,
-    type CardOverrides,
 } from './cardFilterUtils';
+import { type CardOverrides, DarkenMode } from '../../../../shared/types';
 
 // Mock performance.now
 vi.stubGlobal('performance', { now: () => 5000 });
@@ -61,7 +61,7 @@ describe('cardFilterUtils', () => {
     describe('applyDarkenFilter', () => {
         let mockFilter: Record<string, unknown>;
         const globalSettings = {
-            darkenMode: 'none' as const,
+            darkenMode: DarkenMode.None,
             darkenContrast: 2.0,
             darkenEdgeWidth: 0.15,
             darkenAmount: 1.0,
@@ -77,25 +77,25 @@ describe('cardFilterUtils', () => {
         it('should apply global settings when no overrides', () => {
             applyDarkenFilter(mockFilter as never, undefined, globalSettings, 0.5, textureSize);
 
-            expect(mockFilter.darkenMode).toBe('none');
+            expect(mockFilter.darkenMode).toBe(DarkenMode.None);
             expect(mockFilter.darkenAmount).toBe(1.0);
             expect(mockFilter.textureResolution).toEqual(textureSize);
         });
 
         it('should apply card overrides over global settings', () => {
             const overrides: CardOverrides = {
-                darkenMode: 'darken-all',
+                darkenMode: DarkenMode.DarkenAll,
                 darkenAmount: 0.5,
             };
 
             applyDarkenFilter(mockFilter as never, overrides, globalSettings, 0.5, textureSize);
 
-            expect(mockFilter.darkenMode).toBe('darken-all');
+            expect(mockFilter.darkenMode).toBe(DarkenMode.DarkenAll);
             expect(mockFilter.darkenAmount).toBe(0.5);
         });
 
-        it('should use auto-detect base values for contrast modes', () => {
-            const settings = { ...globalSettings, darkenMode: 'contrast-edges' as const };
+        it('should correctly set DarkenMode.ContrastEdges', () => {
+            const settings = { ...globalSettings, darkenMode: DarkenMode.ContrastEdges };
             applyDarkenFilter(mockFilter as never, undefined, settings, 0.5, textureSize);
 
             expect(mockFilter.darkenContrast).toBe(2.0);
@@ -188,7 +188,7 @@ describe('cardFilterUtils', () => {
             expect(result.strength).toBe(75);
         });
 
-        it('should calculate wave animation', () => {
+        it('should correctly set DarkenMode.DarkenAll', () => {
             const overrides: CardOverrides = {
                 holoEffect: 'rainbow',
                 holoAnimation: 'wave',

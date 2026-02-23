@@ -175,7 +175,6 @@ export function UploadLibraryEditor({ isOpen, onClose }: UploadLibraryEditorProp
                 hasBuiltInBleed: item.hasBuiltInBleed,
                 isFlipped: item.flipped || undefined,
                 projectId: useProjectStore.getState().currentProjectId ?? undefined,
-                overrides: { darkenMode: 'none' as const, darkenUseGlobalSettings: false },
             }))
         );
         if (backTasks.length > 0 && addedCards.length > 0) {
@@ -187,7 +186,6 @@ export function UploadLibraryEditor({ isOpen, onClose }: UploadLibraryEditorProp
                     options: {
                         hasBuiltInBleed: t.backItem.hasBuiltInBleed,
                         usesDefaultCardback: false,
-                        overrides: { darkenMode: 'none' as const, darkenUseGlobalSettings: false },
                     },
                 }))
             );

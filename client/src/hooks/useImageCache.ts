@@ -1,6 +1,6 @@
 import { useRef, useEffect, useMemo } from "react";
 import type { Image } from "../db";
-import type { DarkenMode } from "../store/settings";
+import { DarkenMode } from '../../../shared/types';
 import type { CardOption } from "../../../shared/types";
 
 /**
@@ -8,13 +8,13 @@ import type { CardOption } from "../../../shared/types";
  */
 function selectDisplayBlob(img: Image, darkenMode: DarkenMode): Blob | undefined {
     switch (darkenMode) {
-        case 'none':
+        case DarkenMode.None:
             return img.displayBlob;
-        case 'darken-all':
+        case DarkenMode.DarkenAll:
             return img.displayBlobDarkenAll ?? img.displayBlobDarkened ?? img.displayBlob;
-        case 'contrast-edges':
+        case DarkenMode.ContrastEdges:
             return img.displayBlobContrastEdges ?? img.displayBlobDarkened ?? img.displayBlob;
-        case 'contrast-full':
+        case DarkenMode.ContrastFull:
             return img.displayBlobContrastFull ?? img.displayBlobDarkened ?? img.displayBlob;
         default:
             return img.displayBlob;

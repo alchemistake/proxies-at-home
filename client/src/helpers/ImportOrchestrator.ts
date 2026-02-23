@@ -2,6 +2,7 @@ import { type ImportIntent, parseLineToIntent } from "./importParsers";
 import { streamCards, type CardInfo } from "./streamCards";
 import { undoableAddCards } from "./undoableActions";
 import { addRemoteImage, createLinkedBackCardsBulk } from "./dbUtils";
+import { ImageSource } from "../db";
 import { useSettingsStore, useProjectStore, useUserPreferencesStore } from "@/store";
 import { getMpcAutofillImageUrl } from "./mpcAutofillApi";
 import { findBestMpcMatches } from "./mpcImportIntegration";
@@ -225,7 +226,7 @@ export class ImportOrchestrator {
                                         const mpcMatches = await findBestMpcMatches([backInfo]);
                                         if (mpcMatches.length > 0 && mpcMatches[0].imageUrl) {
                                             const match = mpcMatches[0];
-                                            backImageId = await addRemoteImage([match.imageUrl], quantity);
+                                            backImageId = await addRemoteImage([match.imageUrl], quantity, 'mpc');
                                             if (backImageId) {
                                                 console.debug(`[ImportOrchestrator] Found MPC back face for ${intent.name}: ${backFace.name}`);
                                                 dfcBackInfo = { imageId: backImageId, name: backFace.name };
@@ -237,7 +238,7 @@ export class ImportOrchestrator {
 
                                     // 2. Fallback to Scryfall image if no MPC image found
                                     if (!backImageId && backFace.imageUrl) {
-                                        backImageId = await addRemoteImage([backFace.imageUrl], quantity);
+                                        backImageId = await addRemoteImage([backFace.imageUrl], quantity, ImageSource.Scryfall);
                                         if (backImageId) {
                                             dfcBackInfo = { imageId: backImageId, name: backFace.name };
                                         }
@@ -249,7 +250,7 @@ export class ImportOrchestrator {
                     // Case 2: Explicit MPC ID (XML or Manual)
                     else if (intent.mpcId) {
                         const url = getMpcAutofillImageUrl(intent.mpcId);
-                        imageId = await addRemoteImage([url], quantity);
+                        imageId = await addRemoteImage([url], quantity, 'mpc');
                         hasBuiltInBleed = true;
 
                         // DFC & Metadata Enrichment - use cached batch result
@@ -270,7 +271,7 @@ export class ImportOrchestrator {
                                 if (scryfallCard.card_faces && scryfallCard.card_faces.length > 1) {
                                     const backFace = scryfallCard.card_faces[1];
                                     if (backFace.imageUrl) {
-                                        const backId = await addRemoteImage([backFace.imageUrl], quantity);
+                                        const backId = await addRemoteImage([backFace.imageUrl], quantity, ImageSource.Scryfall);
                                         if (backId) {
                                             dfcBackInfo = { imageId: backId, name: backFace.name };
                                         }
@@ -282,7 +283,7 @@ export class ImportOrchestrator {
                     // Case 3: Preloaded Data with images (Scryfall)
                     else if (intent.preloadedData?.imageUrls && intent.preloadedData.imageUrls.length > 0) {
                         const data = intent.preloadedData;
-                        imageId = await addRemoteImage(data.imageUrls!, quantity, data.prints);
+                        imageId = await addRemoteImage(data.imageUrls!, quantity, ImageSource.Scryfall, data.prints);
                     }
 
                     // Update cards with resolved image data
@@ -304,7 +305,7 @@ export class ImportOrchestrator {
                                     }),
                                     // For MPC cards, start with darken-off defaults but merge with intent overrides
                                     overrides: intent.mpcId
-                                        ? { darkenMode: 'none' as const, darkenUseGlobalSettings: false, ...intent.cardOverrides }
+                                        ? { ...intent.cardOverrides }
                                         : (intent.cardOverrides ?? undefined)
                                 });
                             }
@@ -319,7 +320,7 @@ export class ImportOrchestrator {
 
                         if (!isCardbackId(backImageId)) {
                             const backUrl = getMpcAutofillImageUrl(backImageId);
-                            backImageId = (await addRemoteImage([backUrl], quantity))!;
+                            backImageId = (await addRemoteImage([backUrl], quantity, 'mpc'))!;
                         }
 
                         await createLinkedBackCardsBulk(
@@ -433,7 +434,7 @@ export class ImportOrchestrator {
             let imageId: string | undefined;
             const data = intent.preloadedData;
             if (data.imageUrls && data.imageUrls.length > 0) {
-                imageId = await addRemoteImage(data.imageUrls, quantity, data.prints);
+                imageId = await addRemoteImage(data.imageUrls!, quantity, ImageSource.Scryfall, data.prints);
             }
 
             // DFC handling - extract back face info
@@ -447,7 +448,7 @@ export class ImportOrchestrator {
 
                 // Fetch back face image
                 if (backFace.imageUrl) {
-                    backImageId = await addRemoteImage([backFace.imageUrl], quantity);
+                    backImageId = await addRemoteImage([backFace.imageUrl], quantity, ImageSource.Scryfall);
                 }
             }
 
@@ -495,7 +496,7 @@ export class ImportOrchestrator {
         // Strategy 2: MPC ID
         if (intent.mpcId) {
             const url = getMpcAutofillImageUrl(intent.mpcId);
-            const imageId = await addRemoteImage([url], quantity);
+            const imageId = await addRemoteImage([url], quantity, 'mpc');
 
             // Start with base MPC card
             const baseCard = {
@@ -509,7 +510,6 @@ export class ImportOrchestrator {
                 needsEnrichment: true, // Auto-enrich later if immediate lookup fails
                 isToken: intent.isToken,
                 category: intent.category,
-                overrides: { darkenMode: 'none' as const, darkenUseGlobalSettings: false },
                 projectId,
                 // Fields to be populated from Scryfall
                 colors: undefined as string[] | undefined,
@@ -548,7 +548,7 @@ export class ImportOrchestrator {
                     } else if (scryfallCard.card_faces && scryfallCard.card_faces.length > 1) {
                         const backFace = scryfallCard.card_faces[1];
                         if (backFace.imageUrl) {
-                            const backId = await addRemoteImage([backFace.imageUrl], quantity);
+                            const backId = await addRemoteImage([backFace.imageUrl], quantity, ImageSource.Scryfall);
                             if (backId) {
                                 for (let i = 0; i < quantity; i++) {
                                     backCardTasks.push({
@@ -576,7 +576,7 @@ export class ImportOrchestrator {
 
                 if (!isCardbackId(backImageId)) {
                     const backUrl = getMpcAutofillImageUrl(backImageId);
-                    backImageId = (await addRemoteImage([backUrl], quantity))!;
+                    backImageId = (await addRemoteImage([backUrl], quantity, 'mpc'))!;
                 }
 
                 for (let i = 0; i < quantity; i++) {

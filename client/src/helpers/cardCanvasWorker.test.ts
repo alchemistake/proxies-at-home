@@ -11,7 +11,7 @@ import {
     resetEffectContextManager,
 } from "./cardCanvasWorker";
 import { DEFAULT_RENDER_PARAMS } from "../components/CardCanvas/types";
-import type { CardOverrides } from "../../../shared/types";
+import { type CardOverrides, DarkenMode } from "../../../shared/types";
 
 // Mock WebGL2RenderingContext
 const createMockGl = () => {
@@ -88,19 +88,19 @@ const createMockGl = () => {
 describe("cardCanvasWorker", () => {
     describe("darkenModeToInt", () => {
         it("should return 0 for 'none'", () => {
-            expect(darkenModeToInt("none")).toBe(0);
+            expect(darkenModeToInt(DarkenMode.None)).toBe(0);
         });
 
-        it("should return 1 for 'darken-all'", () => {
-            expect(darkenModeToInt("darken-all")).toBe(1);
+        it("should return 1 for DarkenMode.DarkenAll", () => {
+            expect(darkenModeToInt(DarkenMode.DarkenAll)).toBe(1);
         });
 
         it("should return 2 for 'contrast-edges'", () => {
-            expect(darkenModeToInt("contrast-edges")).toBe(2);
+            expect(darkenModeToInt(DarkenMode.ContrastEdges)).toBe(2);
         });
 
         it("should return 3 for 'contrast-full'", () => {
-            expect(darkenModeToInt("contrast-full")).toBe(3);
+            expect(darkenModeToInt(DarkenMode.ContrastFull)).toBe(3);
         });
 
         it("should return 0 for unknown mode", () => {
@@ -274,7 +274,7 @@ describe("cardCanvasWorker", () => {
                 brightness: 10,
                 contrast: 1.5,
                 saturation: 0.8,
-                darkenMode: "contrast-edges",
+                darkenMode: DarkenMode.ContrastEdges,
             };
 
             const params = overridesToRenderParams(overrides);
@@ -282,7 +282,7 @@ describe("cardCanvasWorker", () => {
             expect(params.brightness).toBe(10);
             expect(params.contrast).toBe(1.5);
             expect(params.saturation).toBe(0.8);
-            expect(params.darkenMode).toBe("contrast-edges");
+            expect(params.darkenMode).toBe(DarkenMode.ContrastEdges);
         });
 
         it("should use default values when overrides are not provided", () => {
@@ -299,17 +299,17 @@ describe("cardCanvasWorker", () => {
         it("should use global darken mode when not specified in overrides", () => {
             const overrides: CardOverrides = { brightness: 5 };
 
-            const params = overridesToRenderParams(overrides, "darken-all");
+            const params = overridesToRenderParams(overrides, DarkenMode.DarkenAll);
 
-            expect(params.darkenMode).toBe("darken-all");
+            expect(params.darkenMode).toBe(DarkenMode.DarkenAll);
         });
 
         it("should prefer override darkenMode over global", () => {
-            const overrides: CardOverrides = { darkenMode: "contrast-full" };
+            const overrides: CardOverrides = { darkenMode: DarkenMode.ContrastFull };
 
-            const params = overridesToRenderParams(overrides, "darken-all");
+            const params = overridesToRenderParams(overrides, DarkenMode.DarkenAll);
 
-            expect(params.darkenMode).toBe("contrast-full");
+            expect(params.darkenMode).toBe(DarkenMode.ContrastFull);
         });
     });
 
@@ -324,7 +324,7 @@ describe("cardCanvasWorker", () => {
 
         it("should return false for only darkenMode override", () => {
             // darkenMode alone doesn't require re-rendering since we select the appropriate pre-rendered blob
-            expect(hasAdvancedOverrides({ darkenMode: "contrast-edges" })).toBe(false);
+            expect(hasAdvancedOverrides({ darkenMode: DarkenMode.ContrastEdges })).toBe(false);
         });
 
         it("should return true for brightness adjustment", () => {
@@ -364,31 +364,31 @@ describe("cardCanvasWorker", () => {
             expect(hasAdvancedOverrides({ sharpness: 0 })).toBe(false);
         });
 
-        it("should return true for darkenThreshold override", () => {
-            expect(hasAdvancedOverrides({ darkenThreshold: 50 })).toBe(true);
+        it("should return false for darkenThreshold override", () => {
+            expect(hasAdvancedOverrides({ darkenThreshold: 50 })).toBe(false);
         });
 
-        it("should return true for darkenContrast override", () => {
-            expect(hasAdvancedOverrides({ darkenContrast: 1.5 })).toBe(true);
+        it("should return false for darkenContrast override", () => {
+            expect(hasAdvancedOverrides({ darkenContrast: 1.5 })).toBe(false);
         });
 
-        it("should return true for darkenEdgeWidth override", () => {
-            expect(hasAdvancedOverrides({ darkenEdgeWidth: 20 })).toBe(true);
+        it("should return false for darkenEdgeWidth override", () => {
+            expect(hasAdvancedOverrides({ darkenEdgeWidth: 20 })).toBe(false);
         });
 
-        it("should return true for darkenAmount override", () => {
-            expect(hasAdvancedOverrides({ darkenAmount: 0.8 })).toBe(true);
+        it("should return false for darkenAmount override", () => {
+            expect(hasAdvancedOverrides({ darkenAmount: 0.8 })).toBe(false);
         });
 
-        it("should return true for darkenBrightness override", () => {
-            expect(hasAdvancedOverrides({ darkenBrightness: -10 })).toBe(true);
+        it("should return false for darkenBrightness override", () => {
+            expect(hasAdvancedOverrides({ darkenBrightness: -10 })).toBe(false);
         });
 
         it("should return true for multiple overrides", () => {
             expect(hasAdvancedOverrides({
                 brightness: 5,
                 contrast: 1.2,
-                darkenMode: "contrast-edges",
+                darkenMode: DarkenMode.ContrastEdges,
             })).toBe(true);
         });
     });
