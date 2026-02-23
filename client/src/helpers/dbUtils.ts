@@ -2,6 +2,7 @@ import { db, type Image } from "@/db";
 import type { CardOption, CardOverrides } from "../../../shared/types";
 import { parseImageIdFromUrl } from "./imageHelper";
 import { isCardbackId } from "./cardbackLibrary";
+import { generateUUID } from "./uuid";
 import { extractMpcIdentifierFromImageId, getMpcAutofillImageUrl } from "./mpcAutofillApi";
 import { inferSourceFromUrl, getImageSourceSync, isUploadLibrarySource } from "./imageSourceUtils";
 import { detectBleed } from "./cardDimensions";
@@ -256,7 +257,7 @@ export async function addCards(
 
   const newCards: CardOption[] = cardsData.map((cardData, i) => ({
     ...cardData,
-    uuid: crypto.randomUUID(),
+    uuid: generateUUID(),
     // Respect explicit order if provided, otherwise use sequential order
     order: cardData.order ?? (startOrder + i * 10),
   }));
@@ -369,7 +370,7 @@ export async function createLinkedBackCard(
     overrides?: Partial<CardOption['overrides']>;
   }
 ): Promise<string> {
-  const backUuid = crypto.randomUUID();
+  const backUuid = generateUUID();
 
   await db.transaction("rw", db.cards, db.images, db.cardbacks, async () => {
     const frontCard = await db.cards.get(frontUuid);
@@ -472,7 +473,7 @@ export async function createLinkedBackCardsBulk(
         continue;
       }
 
-      const backUuid = crypto.randomUUID();
+      const backUuid = generateUUID();
       newUuids.push(backUuid);
 
       // Prepare back card - back cards NEVER need Scryfall enrichment
@@ -668,14 +669,14 @@ export async function duplicateCard(uuid: string): Promise<void> {
       newOrder = currentIndex + 2;
     }
 
-    const newFrontUuid = crypto.randomUUID();
+    const newFrontUuid = generateUUID();
     let newBackUuid: string | undefined;
 
     // If the card has a linked back, duplicate it too
     if (cardToCopy.linkedBackId) {
       const backCard = await db.cards.get(cardToCopy.linkedBackId);
       if (backCard) {
-        newBackUuid = crypto.randomUUID();
+        newBackUuid = generateUUID();
 
         // Create duplicated back card with link to new front
         const newBackCard: CardOption = {

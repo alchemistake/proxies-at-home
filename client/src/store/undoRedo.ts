@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { generateUUID } from "../helpers/uuid";
 
 /**
  * Action types that can be undone/redone
@@ -70,7 +71,7 @@ export const useUndoRedoStore = create<UndoRedoStore>()((set, get) => ({
 
         const newAction: UndoableAction = {
             ...action,
-            id: crypto.randomUUID(),
+            id: generateUUID(),
             timestamp: Date.now(),
         };
 

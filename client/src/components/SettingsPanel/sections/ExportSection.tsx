@@ -69,16 +69,21 @@ export function ExportSection({ cards }: Props) {
         );
     }, [pageWidth, pageHeight, pageUnit]);
 
+    // Safari (desktop and mobile) has GPU memory limits that make 900/1200 DPI unreliable
+    const isSafariLimited = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isMobileBrowser = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
     const availableDpiOptions = useMemo(() => {
+        const maxDpi = isSafariLimited ? Math.min(maxSafeDpiForPage, 600) : maxSafeDpiForPage;
         const options: { label: string; value: number }[] = [];
-        for (let i = 300; i <= maxSafeDpiForPage; i += 300) {
+        for (let i = 300; i <= maxDpi; i += 300) {
             options.push({ label: `${i}`, value: i });
         }
 
-        if (maxSafeDpiForPage % 300 !== 0) {
+        if (maxDpi % 300 !== 0) {
             options.push({
-                label: `${maxSafeDpiForPage} (Max)`,
-                value: maxSafeDpiForPage,
+                label: `${maxDpi} (Max)`,
+                value: maxDpi,
             });
         }
 
@@ -87,26 +92,26 @@ export function ExportSection({ cards }: Props) {
             else if (opt.value === 600) opt.label = "600 (Fast)";
             else if (opt.value === 900) opt.label = "900 (Sharp)";
             else if (opt.value === 1200) opt.label = "1200 (High Quality)";
-            else if (opt.value === maxSafeDpiForPage)
-                opt.label = `${maxSafeDpiForPage} (Max)`;
+            else if (opt.value === maxDpi)
+                opt.label = `${maxDpi} (Max)`;
             else opt.label = `${opt.value}`;
         });
 
         return options;
-    }, [maxSafeDpiForPage]);
-
-    // If current DPI exceeds max, clamp it down
-    useEffect(() => {
-        if (dpi > maxSafeDpiForPage) {
-            const highestOption = availableDpiOptions.at(-1);
-            if (highestOption) {
-                setDpi(highestOption.value);
-            }
-        }
-    }, [availableDpiOptions, dpi, maxSafeDpiForPage, setDpi]);
+    }, [maxSafeDpiForPage, isSafariLimited]);
 
     return (
         <div className="space-y-4">
+            {isMobileBrowser && (
+                <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 px-3 py-2 text-xs text-yellow-800 dark:text-yellow-300">
+                    Exports are limited to 600 DPI on mobile due to device memory constraints. For higher quality, try exporting on a desktop browser.
+                </div>
+            )}
+            {!isMobileBrowser && isSafariLimited && (
+                <div className="rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 px-3 py-2 text-xs text-yellow-800 dark:text-yellow-300">
+                    Exports are limited to 600 DPI on Safari due to GPU memory constraints. For higher quality, try Chrome, Firefox, or Edge.
+                </div>
+            )}
             <ExportActions cards={cards} />
             <div>
                 <Label>PDF Export DPI</Label>

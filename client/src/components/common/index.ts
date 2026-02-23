@@ -25,6 +25,7 @@ export { StyledSlider } from './StyledSlider';
 export { UpdateNotification } from './UpdateNotification';
 export { UpdateChannelSelector } from './UpdateChannelSelector';
 export { AboutModal } from './AboutModal';
+export { DonationBanner } from './DonationBanner';
 export { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 export { ResponsiveModal } from './ResponsiveModal';
 export type { ResponsiveModalProps } from './ResponsiveModal';

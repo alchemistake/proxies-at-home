@@ -5,7 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import type { CardOption } from "../../../shared/types";
 
 import { ResizeHandle } from "../components/CardEditorModal/ResizeHandle";
-import { ToastContainer } from "../components/common";
+import { ToastContainer, DonationBanner } from "../components/common";
 import { PageView, PageSettingsControls } from "../components/PageView";
 import { UploadSection } from "../components/UploadSection";
 
@@ -503,6 +503,7 @@ export default function ProxyBuilderPage() {
   if (isMobile) {
     return (
       <div className={`flex ${isLandscape ? 'flex-row' : 'flex-col'} h-dvh overflow-hidden bg-gray-50 dark:bg-gray-900`}>
+        <DonationBanner />
         {/* Navigation - Left for Landscape, Bottom for Portrait */}
         <div className={`
           ${isLandscape
@@ -594,9 +595,10 @@ export default function ProxyBuilderPage() {
   // Desktop Layout
   return (
     <div className="flex flex-col h-dvh overflow-hidden">
+      <DonationBanner />
       <div className="flex flex-row flex-1 overflow-hidden relative">
         <div
-          className="relative transition-all duration-200 ease-in-out z-30 h-full overflow-hidden"
+          className="relative transition-all duration-200 ease-in-out z-30 h-full overflow-hidden border-r border-gray-300 dark:border-gray-600"
           style={{
             width: isUploadPanelCollapsed ? 60 : uploadPanelWidth,
             minWidth: isUploadPanelCollapsed ? 60 : 320,
@@ -644,7 +646,7 @@ export default function ProxyBuilderPage() {
           side="right"
         />
         <div
-          className="h-full overflow-hidden"
+          className="h-full overflow-hidden border-l border-gray-300 dark:border-gray-600"
           style={{
             width: isSettingsPanelCollapsed ? 60 : settingsPanelWidth,
             minWidth: isSettingsPanelCollapsed ? 60 : 320,

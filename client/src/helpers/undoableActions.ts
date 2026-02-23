@@ -3,6 +3,7 @@
  * These wrappers capture the necessary state before performing operations
  * so that they can be undone/redone.
  */
+import { generateUUID } from "./uuid";
 
 import { db, type Image } from "@/db";
 import type { CardOption } from "../../../shared/types";
@@ -308,7 +309,7 @@ export async function undoableDuplicateCardsBatch(uuids: string[]): Promise<stri
 
         // Prepare new cards
         for (const original of cardsToDuplicate) {
-            const newFrontUuid = crypto.randomUUID();
+            const newFrontUuid = generateUUID();
             let newBackUuid: string | undefined;
             let newBackCard: CardOption | undefined;
 
@@ -316,7 +317,7 @@ export async function undoableDuplicateCardsBatch(uuids: string[]): Promise<stri
             if (original.linkedBackId) {
                 const backCard = await db.cards.get(original.linkedBackId);
                 if (backCard) {
-                    newBackUuid = crypto.randomUUID();
+                    newBackUuid = generateUUID();
                     newBackCard = {
                         ...backCard,
                         uuid: newBackUuid,

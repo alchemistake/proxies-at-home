@@ -147,11 +147,11 @@ export async function exportProxyPagesToPdf({
       const workerPromise = new Promise<Uint8Array>((resolve, reject) => {
         (async () => {
           const pdfDoc = await PDFDocument.create();
-          // Worker count based on hardware
           const baseWorkers = Math.floor(Math.log2(navigator.hardwareConcurrency || 1)) + 1;
-          const maxWorkers = baseWorkers;
+          // iOS devices have limited GPU memory; cap to 2 workers to avoid OOM crashes.
+          const isMobileWorker = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+          const maxWorkers = isMobileWorker ? 2 : baseWorkers;
 
-          // Initialize task queue with all pages
           const taskQueue = chunkPages.map((pageCards, index) => ({
             pageCards,
             pageIndex: index,
@@ -358,9 +358,12 @@ export async function exportProxyPagesToPdf({
             };
 
             worker.onerror = (e) => {
+              const msg = e.message || e.filename
+                ? `Worker error: ${e.message}${e.filename ? ` (${e.filename}:${e.lineno})` : ''}`
+                : 'Worker crashed (likely out of memory)';
               coordinator.handleEvent({
                 type: 'ERROR',
-                error: e instanceof Error ? e : new Error('Worker error')
+                error: new Error(msg)
               });
             };
 
@@ -417,6 +420,5 @@ export async function exportProxyPagesToPdf({
   link.click();
   document.body.removeChild(link);
 
-  // Clean up the blob URL after a short delay to allow the download to start
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

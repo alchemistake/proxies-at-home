@@ -46,7 +46,7 @@ export function UploadSection({ isCollapsed, onToggle, cardCount, mobile, onUplo
   return (
     <div className={`w-full h-full dark:bg-gray-700 bg-gray-100 flex flex-col border-r border-gray-200 dark:border-gray-600 select-none`}>
       {!mobile && (
-        <div>
+        <div className="border-b border-gray-300 dark:border-gray-600">
           <img src={fullLogo} alt="Proxxied Logo" className="w-full" />
         </div>
       )}

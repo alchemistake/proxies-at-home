@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
 import type { CardOption, PrintInfo } from '@/types';
+import { generateUUID } from './helpers/uuid';
 
 // Image source types for explicit tracking
 export type ImageSource = 'mpc' | 'scryfall' | 'upload-library' | 'cardback';
@@ -397,7 +398,7 @@ class ProxxiedDexie extends Dexie {
       userPreferences: '&id',
     }).upgrade(async tx => {
       // Create default project
-      const defaultProjectId = crypto.randomUUID();
+      const defaultProjectId = generateUUID();
       const cardCount = await tx.table('cards').count();
 
       // Copy existing global settings

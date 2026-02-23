@@ -3,6 +3,7 @@ import { db, type Project } from "../db";
 import { useSettingsStore, migrateLegacySettings, type Store as SettingsStore, type LegacySettingsState } from "./settings";
 import { useUndoRedoStore } from "./undoRedo";
 import { cancelAllProcessing } from "../helpers/cancellationService";
+import { generateUUID } from "../helpers/uuid";
 
 interface ProjectState {
     currentProjectId: string | null;
@@ -63,7 +64,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     },
 
     createProject: async (name: string) => {
-        const id = crypto.randomUUID();
+        const id = generateUUID();
 
         // Get defaults from user preferences
         const userPrefs = await db.userPreferences.get('default');

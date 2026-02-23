@@ -580,6 +580,7 @@ self.onmessage = async (event: MessageEvent) => {
             rotation: number;  // Rotation in degrees
             offsetX: number;  // Final X offset applied after rotation
             offsetY: number;  // Final Y offset applied after rotation
+            cacheKey: string | null;
         };
 
         // PHASE 1: Prepare cards with LIMITED CONCURRENCY to avoid memory exhaustion
@@ -961,6 +962,7 @@ self.onmessage = async (event: MessageEvent) => {
                 rotation: cardRotation,
                 offsetX,
                 offsetY,
+                cacheKey,
             };
         }, MAX_CONCURRENT_CARDS);
 
@@ -992,6 +994,13 @@ self.onmessage = async (event: MessageEvent) => {
 
                 if (prepared.canvas instanceof ImageBitmap) {
                     prepared.canvas.close();
+                }
+
+                // Evict from canvas cache now that we've drawn this card -  
+                // each card's canvas is released as soon as it's drawn to the page, 
+                // so memory stays flat regardless of how many pages you export. 
+                if (prepared.cacheKey) {
+                    canvasCache.delete(prepared.cacheKey);
                 }
 
                 // Stamp per-card guide overlay (skip for blank cards)
@@ -1028,13 +1037,20 @@ self.onmessage = async (event: MessageEvent) => {
             drawSilhouetteRegistrationMarks(ctx, pageWidthPx, pageHeightPx, DPI, registrationMarks, registrationMarksPortrait);
         }
 
-        const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.98 });
-        if (blob) {
-            const url = URL.createObjectURL(blob);
-            self.postMessage({ type: 'result', url, pageIndex });
-        } else {
-            self.postMessage({ error: 'Failed to create blob' });
+        let blob: Blob;
+        try {
+            blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.98 });
+        } catch {
+            const canvasMb = Math.round(pageWidthPx * pageHeightPx * 4 / 1024 / 1024);
+            const availableDpis = [300, 600, 900, 1200];
+            const safeDpi = [...availableDpis].filter(d => d < DPI).pop() ?? 300;
+            throw new Error(
+                `Export at ${DPI} DPI requires a ${pageWidthPx}×${pageHeightPx} canvas (~${canvasMb} MB) ` +
+                `which exceeded your device's memory limit. Try ${safeDpi} DPI or lower.`
+            );
         }
+        const url = URL.createObjectURL(blob);
+        self.postMessage({ type: 'result', url, pageIndex });
 
     } catch (error: unknown) {
         console.error("Error in PDF worker process:", error);

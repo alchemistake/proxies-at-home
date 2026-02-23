@@ -1,3 +1,5 @@
+import { generateUUID } from "./uuid";
+
 export type ImportType = 'archidekt' | 'moxfield' | 'scryfall' | 'mpc' | 'unknown';
 
 export interface ImportSessionConfig {
@@ -20,7 +22,7 @@ export interface ImportSessionStats {
 }
 
 export class ImportSession {
-    readonly id = crypto.randomUUID();
+    readonly id = generateUUID();
     readonly startTime = performance.now();
     readonly config: ImportSessionConfig;
 

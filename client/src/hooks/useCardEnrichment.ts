@@ -3,6 +3,7 @@ import { db, METADATA_CACHE_VERSION, type CachedMetadata } from "../db";
 import type { CardOption } from "@/types";
 import { API_BASE } from "../constants";
 import { getCurrentSession } from "../helpers/importSession";
+import { generateUUID } from "../helpers/uuid";
 import { useToastStore } from "../store/toast";
 import { getEnrichmentAbortController } from "../helpers/cancellationService";
 import { isCardbackId } from "../helpers/cardbackLibrary";
@@ -222,7 +223,7 @@ export function useCardEnrichment() {
                                     const size = new Blob([jsonStr]).size;
 
                                     entriesToCache.push({
-                                        id: crypto.randomUUID(),
+                                        id: generateUUID(),
                                         name: data.name,
                                         set: data.set || '',
                                         number: data.number || '',
@@ -453,7 +454,7 @@ export function useCardEnrichment() {
 
                                     } else {
                                         // Create New Back Card
-                                        const backUuid = crypto.randomUUID();
+                                        const backUuid = generateUUID();
                                         const newBackCard: CardOption = {
                                             uuid: backUuid,
                                             name: back.name,
